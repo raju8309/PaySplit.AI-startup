@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
-from backend.services.settlement_service import calculate_balances, minimize_transactions
-from backend.utils.money import dollars_to_cents
+from services.settlement_service import calculate_balances, minimize_transactions
+from utils.money import dollars_to_cents
 
 router = APIRouter(prefix="/api/settlements", tags=["Settlements"])
 

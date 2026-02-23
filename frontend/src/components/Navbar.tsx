@@ -73,16 +73,18 @@ const Navbar = () => {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
         }).then((r) => r.json());
 
+        // Try signup first
         let res = await fetch("/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: userInfo.name,
             email: userInfo.email,
-            password: userInfo.sub,
+            password: userInfo.sub, // Google sub as password
           }),
         });
 
+        // Already registered — try login with Google sub as password
         if (res.status === 400) {
           res = await fetch("/api/auth/login", {
             method: "POST",
@@ -92,6 +94,19 @@ const Navbar = () => {
               password: userInfo.sub,
             }),
           });
+        }
+
+        // Login failed — email exists but was registered with a manual password
+        if (res.status === 401) {
+          toast({
+            title: "Account already exists",
+            description: `${userInfo.email} was registered with email/password. Please log in with your password instead.`,
+            variant: "destructive",
+          });
+          setShowAuth(true);
+          setAuthMode("login");
+          setEmail(userInfo.email); // pre-fill email for convenience
+          return;
         }
 
         const data = await res.json();
@@ -255,7 +270,6 @@ const Navbar = () => {
                     : "Start splitting payments smarter today"}
                 </p>
 
-                {/* Google only */}
                 <div className="mt-6">
                   <button
                     onClick={() => googleLogin()}

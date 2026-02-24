@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, List
 
 
 class Settings(BaseSettings):
@@ -9,12 +9,12 @@ class Settings(BaseSettings):
     # ===============================
     # Database
     # ===============================
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./paysplit.db"
 
     # ===============================
     # JWT
     # ===============================
-    SECRET_KEY: str
+    SECRET_KEY: str = "your-secret-key-change-this-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
@@ -28,22 +28,37 @@ class Settings(BaseSettings):
     # ===============================
     # CORS
     # ===============================
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
+    CORS_ORIGINS: str = (
+        "http://localhost:5173,"
+        "http://localhost:3000,"
+        "http://127.0.0.1:5173,"
+        "http://127.0.0.1:3000"
+    )
 
     # ===============================
-    # Fraud Model (XGBoost)
+    # Fraud Model
     # ===============================
     FRAUD_XGB_MODEL_PATH: str = "ml/artifacts/fraud_xgb/fraud_xgb_model.json"
-
-    # Default threshold used by API
     FRAUD_THRESHOLD: float = 0.93
+    FRAUD_MODE: str = "strict"
 
-    # Mode switching (future flexibility)
-    FRAUD_MODE: str = "strict"  # strict | balanced
+    # ===============================
+    # Stripe
+    # ===============================
+    STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+
+    # ===============================
+    # Frontend
+    # ===============================
+    FRONTEND_URL: str = "http://localhost:5173"
 
     class Config:
         env_file = ".env"
         case_sensitive = True
+
+    def cors_origins_list(self) -> List[str]:
+        return [x.strip() for x in self.CORS_ORIGINS.split(",") if x.strip()]
 
 
 settings = Settings()

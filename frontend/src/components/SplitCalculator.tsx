@@ -4,11 +4,35 @@ import { CreditCard, Sparkles, DollarSign, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
+const createCheckoutSession = async (payload: {
+  from_user: string;
+  to_user: string;
+  amount_cents: number;
+  currency?: string;
+  group_id?: string;
+  settlement_ref?: string;
+}) => {
+  const res = await fetch("/api/payments/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || "Checkout failed");
+  return data as { url: string; session_id: string; payment_id: string };
+};
+
+type SettlementResult = {
+  balances_cents: Record<string, number>;
+  transactions: { from: string; to: string; amount_cents: number }[];
+};
+
 const SplitCalculator = () => {
   const [total, setTotal] = useState("14.00");
   const [cardA, setCardA] = useState("12.00");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ balances_cents: Record<string, number>; transactions: { from: string; to: string; amount_cents: number }[] } | null>(null);
+  const [result, setResult] = useState<SettlementResult | null>(null);
   const { toast } = useToast();
 
   const totalNum = parseFloat(total) || 0;
@@ -16,6 +40,24 @@ const SplitCalculator = () => {
   const cardBNum = Math.max(0, +(totalNum - cardANum).toFixed(2));
   const fee = +(totalNum * 0.005).toFixed(2);
   const cardAPercent = totalNum > 0 ? (cardANum / totalNum) * 100 : 50;
+
+  const handlePay = async (tx: { from: string; to: string; amount_cents: number }) => {
+    try {
+      const { url } = await createCheckoutSession({
+        from_user: tx.from,
+        to_user: tx.to,
+        amount_cents: tx.amount_cents,
+        currency: "usd",
+        group_id: "demo-group-1",
+        settlement_ref: "split-calculator-demo",
+      });
+
+      window.location.href = url;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      toast({ title: "Payment Error", description: message, variant: "destructive" });
+    }
+  };
 
   const handleCalculate = async () => {
     if (totalNum <= 0) {
@@ -124,12 +166,21 @@ const SplitCalculator = () => {
                 max={totalNum}
                 step="0.01"
                 value={cardANum}
-                onChange={(e) => { setCardA(e.target.value); setResult(null); }}
+                onChange={(e) => {
+                  setCardA(e.target.value);
+                  setResult(null);
+                }}
                 className="w-full accent-primary"
               />
               <div className="mt-2 flex h-3 overflow-hidden rounded-full">
-                <div className="bg-primary transition-all duration-200" style={{ width: `${cardAPercent}%` }} />
-                <div className="bg-accent transition-all duration-200" style={{ width: `${100 - cardAPercent}%` }} />
+                <div
+                  className="bg-primary transition-all duration-200"
+                  style={{ width: `${cardAPercent}%` }}
+                />
+                <div
+                  className="bg-accent transition-all duration-200"
+                  style={{ width: `${100 - cardAPercent}%` }}
+                />
               </div>
             </div>
 
@@ -143,8 +194,11 @@ const SplitCalculator = () => {
                 <p className="font-display text-3xl font-bold text-primary">
                   ${cardANum.toFixed(2)}
                 </p>
-                <p className="mt-1 text-xs text-primary/70">3% cashback → ${(cardANum * 0.03).toFixed(2)} back</p>
+                <p className="mt-1 text-xs text-primary/70">
+                  3% cashback → ${(cardANum * 0.03).toFixed(2)} back
+                </p>
               </div>
+
               <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-center">
                 <div className="mb-2 flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <CreditCard className="h-4 w-4 text-accent" />
@@ -153,7 +207,9 @@ const SplitCalculator = () => {
                 <p className="font-display text-3xl font-bold text-accent">
                   ${cardBNum.toFixed(2)}
                 </p>
-                <p className="mt-1 text-xs text-accent/70">2% cashback → ${(cardBNum * 0.02).toFixed(2)} back</p>
+                <p className="mt-1 text-xs text-accent/70">
+                  2% cashback → ${(cardBNum * 0.02).toFixed(2)} back
+                </p>
               </div>
             </div>
 
@@ -166,11 +222,25 @@ const SplitCalculator = () => {
             {/* Backend result */}
             {result && (
               <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-                <p className="font-semibold text-primary mb-1">✅ Backend Confirmed Split</p>
+                <p className="mb-1 font-semibold text-primary">
+                  ✅ Backend Confirmed Split
+                </p>
+
                 {result.transactions.map((tx, i) => (
-                  <p key={i} className="text-muted-foreground">
-                    {tx.from} → {tx.to}: ${(tx.amount_cents / 100).toFixed(2)}
-                  </p>
+                  <div key={i} className="flex items-center justify-between gap-3 py-1">
+                    <p className="text-muted-foreground">
+                      {tx.from} → {tx.to}: ${(tx.amount_cents / 100).toFixed(2)}
+                    </p>
+
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="shrink-0"
+                      onClick={() => handlePay(tx)}
+                    >
+                      Pay
+                    </Button>
+                  </div>
                 ))}
               </div>
             )}
@@ -181,7 +251,13 @@ const SplitCalculator = () => {
               onClick={handleCalculate}
               disabled={loading}
             >
-              {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Calculating...</> : "Calculate Split"}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Calculating...
+                </>
+              ) : (
+                "Calculate Split"
+              )}
             </Button>
           </div>
         </motion.div>

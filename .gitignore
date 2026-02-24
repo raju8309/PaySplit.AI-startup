@@ -33,5 +33,10 @@ package-lock.json
 .idea/
 
 # Env
+# env files (never commit secrets)
 .env
+backend/.env
+frontend/.env
+frontend/.env.local
 .env.local
+.env.*.local

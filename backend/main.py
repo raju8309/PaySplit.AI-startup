@@ -5,6 +5,7 @@ from config import settings
 from routes.health import router as health_router
 from routes.auth import router as auth_router
 from routes.settlements import router as settlements_router
+from routes.payments import router as payments_router
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(settlements_router)
+app.include_router(payments_router)
 
 @app.on_event("startup")
 def on_startup():
@@ -37,6 +39,7 @@ def on_startup():
         from models.user import User
         from models.group import Group
         from models.expense import Expense
+        from models.payment import Payment
         
         Base.metadata.create_all(bind=engine)
         logger.info("DB tables ensured (create_all).")

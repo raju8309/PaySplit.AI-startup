@@ -1,42 +1,28 @@
-const API_BASE = '/api'
-
-// ── AUTH ──────────────────────────────────────
-export const authAPI = {
-  signup: async (name: string, email: string, password: string) => {
-    const res = await fetch(`${API_BASE}/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    })
-    if (!res.ok) throw new Error((await res.json()).detail)
-    return res.json() // returns { access_token, user }
-  },
-
-  login: async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    })
-    if (!res.ok) throw new Error((await res.json()).detail)
-    return res.json() // returns { access_token, user }
-  },
+export async function createCheckoutSession(payload: {
+  from_user: string;
+  to_user: string;
+  amount_cents: number;
+  currency?: string;
+  group_id?: string;
+  settlement_ref?: string;
+}) {
+  const res = await fetch("/api/payments/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<{ url: string; session_id: string; payment_id: string }>;
 }
 
-// ── SETTLEMENTS ───────────────────────────────
-export const settlementAPI = {
-  calculate: async (expenses: object[]) => {
-    const res = await fetch(`${API_BASE}/settlements/calculate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ expenses })
-    })
-    if (!res.ok) throw new Error((await res.json()).detail)
-    return res.json() // returns { balances_cents, transactions }
-  }
+export async function getPayment(payment_id: string) {
+  const res = await fetch(`/api/payments/${payment_id}`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<{
+    id: string;
+    status: "pending" | "paid" | "failed";
+    amount_cents: number;
+    from_user: string;
+    to_user: string;
+  }>;
 }
-
-// ── TOKEN HELPERS ─────────────────────────────
-export const saveToken = (token: string) => localStorage.setItem('token', token)
-export const getToken = () => localStorage.getItem('token')
-export const clearToken = () => localStorage.removeItem('token')

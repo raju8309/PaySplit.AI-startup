@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Optional  # ← added Optional
 
 class CardRecommenderNet(nn.Module):
     def __init__(self, num_features=9):
@@ -85,7 +85,7 @@ class CardRecommender:
         self.model.eval()
         print("Training complete!")
     
-    def recommend(self, transaction_amount: float, cards: List[Dict], free_trial: bool = False) -> Dict:
+    def recommend(self, transaction_amount: float, cards: List[Dict], free_trial: bool = False, merchant: Optional[str] = None) -> Dict:  # ← added merchant
         features = [transaction_amount]
         
         # Card 1
@@ -129,6 +129,7 @@ class CardRecommender:
         return {
             'allocations': allocations,
             'transaction_amount': transaction_amount,
+            'merchant': merchant,  # ← added merchant to response
             'paysplit_fee': round(total_fee, 2),
             'total_charged': round(transaction_amount + total_fee, 2),
             'free_trial': free_trial

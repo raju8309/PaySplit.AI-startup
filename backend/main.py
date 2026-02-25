@@ -12,8 +12,11 @@ from routes.health import router as health_router
 from routes.auth import router as auth_router
 from routes.settlements import router as settlements_router
 from routes.payments import router as payments_router
-from routes.ml import router as ml_router
 from routes.cards import router as cards_router
+
+# ✅ Week 8 routes
+from routes.analytics import router as analytics_router
+from routes.reports import router as reports_router
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +46,28 @@ app.add_middleware(
 )
 
 
+# ── Optional ML Router (prevents startup crash if model artifacts missing) ─
+try:
+    from routes.ml import router as ml_router
+except Exception as e:
+    ml_router = None
+    logger.warning(f"ML routes disabled (reason: {e})")
+
+
 # ── Routers ───────────────────────────────────────────────────────────────
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(settlements_router)
 app.include_router(payments_router)
-app.include_router(ml_router)
 app.include_router(cards_router)
+
+# ML only if artifacts exist
+if ml_router:
+    app.include_router(ml_router)
+
+# ✅ Week 8
+app.include_router(analytics_router)
+app.include_router(reports_router)
 
 
 # ── Startup ───────────────────────────────────────────────────────────────
@@ -70,7 +88,7 @@ def on_startup():
     except Exception as e:
         logger.warning(f"DB not ready yet. Skipping create_all. Error: {e}")
 
-    # 2) Load fraud model
+    # 2) Load fraud model (optional)
     try:
         import xgboost as xgb
 

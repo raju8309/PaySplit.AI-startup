@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+import os
 
 import numpy as np
 import xgboost as xgb
@@ -17,26 +18,47 @@ class FraudPrediction:
 
 class FraudModelXGB:
     """
-    Loads your trained XGBoost model from:
-      ml/artifacts/fraud_xgb/fraud_xgb_model.json
+    Production-ready XGBoost fraud model service.
 
-    Predicts probability of fraud.
+    - Loads model ONCE at startup via load()
+    - Uses env var FRAUD_XGB_MODEL_PATH if provided
+    - Validates feature dimension (11)
     """
 
-    def __init__(self, model_path: str, default_threshold: float = 0.93):
-        self.model_path = Path(model_path)
+    def __init__(self, model_path: Optional[str] = None, default_threshold: float = 0.93):
+        # Allow override via environment variable
+        env_path = os.getenv("FRAUD_XGB_MODEL_PATH")
+        final_path = env_path or model_path or "ml/artifacts/fraud_xgb/fraud_xgb_model.json"
+
+        self.model_path = Path(final_path)
         self.default_threshold = float(default_threshold)
 
+        self.booster: Optional[xgb.Booster] = None
+        self.input_dim = 11  # Your trained model expects 11 features
+
+    # ---------------------------------------------------------
+    # Lifecycle
+    # ---------------------------------------------------------
+    def load(self) -> None:
+        """Load model into memory (call once at FastAPI startup)."""
         if not self.model_path.exists():
             raise FileNotFoundError(f"Fraud XGB model not found at: {self.model_path}")
 
-        self.booster = xgb.Booster()
-        self.booster.load_model(str(self.model_path))
+        booster = xgb.Booster()
+        booster.load_model(str(self.model_path))
+        self.booster = booster
 
-        # IMPORTANT: Your model expects 11 features
-        self.input_dim = 11
+    @property
+    def ready(self) -> bool:
+        return self.booster is not None
 
+    # ---------------------------------------------------------
+    # Prediction
+    # ---------------------------------------------------------
     def predict_proba(self, features: List[float]) -> float:
+        if not self.ready:
+            raise RuntimeError("FraudModelXGB not loaded. Call load() at startup.")
+
         if len(features) != self.input_dim:
             raise ValueError(f"Expected {self.input_dim} features, got {len(features)}")
 
@@ -48,31 +70,26 @@ class FraudModelXGB:
     def predict(self, features: List[float], threshold: Optional[float] = None) -> FraudPrediction:
         thr = self.default_threshold if threshold is None else float(threshold)
         prob = self.predict_proba(features)
-        return FraudPrediction(probability=prob, threshold=thr, is_fraud=(prob >= thr))
+        return FraudPrediction(
+            probability=prob,
+            threshold=thr,
+            is_fraud=(prob >= thr),
+        )
 
+
+# -------------------------------------------------------------
+# Feature Builder
+# -------------------------------------------------------------
 
 def build_features_from_fields(payload: Dict[str, Any]) -> List[float]:
     """
-    Minimal feature builder for API usage.
+    API-safe feature builder.
 
     IMPORTANT:
-    This must match the SAME feature order you used in preprocess.py.
-
-    Based on what we debugged earlier, your 11 features look like:
-      [amount,
-       hour_sin, hour_cos,
-       dow_sin, dow_cos,
-       card_limit, card_balance, utilization,
-       distance_km,
-       mcc_group_id,
-       maybe something else (like merchant risk / txn_velocity)]
-    BUT your current dataset still outputs 11.
-    So for now: we let user pass features OR we build a simple safe baseline.
-
-    You should later copy the exact feature builder from preprocess.py into here.
+    This MUST match the SAME feature order used in preprocess.py.
+    If you update training features, update this function too.
     """
 
-    # Safe defaults so endpoint doesn't crash if field missing.
     amount = float(payload.get("amount", 0.0))
 
     hour_sin = float(payload.get("hour_sin", 0.0))
@@ -89,8 +106,7 @@ def build_features_from_fields(payload: Dict[str, Any]) -> List[float]:
 
     mcc_group_id = float(payload.get("mcc_group_id", 0.0))
 
-    # 11th feature placeholder:
-    # Until you wire the exact preprocess logic, keep it stable.
+    # Placeholder 11th feature
     extra = float(payload.get("extra", 0.0))
 
     return [

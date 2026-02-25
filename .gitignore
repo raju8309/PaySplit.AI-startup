@@ -39,3 +39,49 @@ backend/.env
 frontend/.env
 frontend/.env.local
 .env.local
+
+# ───────────── ML Data & Artifacts ─────────────
+# Raw and processed datasets (never commit large data)
+ml/data/
+
+# TensorFlow artifacts (large)
+ml/artifacts/fraud_tf/
+
+# XGBoost artifacts (ignore everything by default)
+ml/artifacts/fraud_xgb/*
+
+# Allow only essential fraud model + metadata
+!ml/artifacts/fraud_xgb/fraud_xgb_model.json
+!ml/artifacts/fraud_xgb/train_meta.json
+!ml/artifacts/fraud_xgb/eval_val.json
+!ml/artifacts/fraud_xgb/eval_test.json
+
+# Logs
+*.log
+logs/
+
+# Coverage / test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Docker
+*.env.docker
+
+# Mac system files
+.AppleDouble
+.LSOverride
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+backend/paysplit.db
+!ml/artifacts/fraud_xgb/fraud_xgb_model.json
+ml/artifacts/card_recommender.pt
+ml/artifacts/fraud_pipeline_summary.json
+requirements-lock.txt

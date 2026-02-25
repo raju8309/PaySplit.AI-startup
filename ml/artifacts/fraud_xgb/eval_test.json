@@ -1,0 +1,47 @@
+{
+  "split": "test",
+  "npz": "ml/data/processed/fraud_dataset.npz",
+  "model": "ml/artifacts/fraud_xgb/fraud_xgb_model.json",
+  "n_rows": 75000,
+  "fraud_rate": 0.0014266666666666666,
+  "threshold": 0.93,
+  "min_precision": null,
+  "auc_roc": 0.8567192621598091,
+  "auc_pr": 0.028256413605094524,
+  "prob_min": 0.026087118312716484,
+  "prob_max": 0.9527708292007446,
+  "prob_mean": 0.277361661195755,
+  "confusion_matrix": {
+    "tn": 74845,
+    "fp": 48,
+    "fn": 100,
+    "tp": 7
+  },
+  "classification_report": {
+    "0": {
+      "precision": 0.9986656881713256,
+      "recall": 0.9993590856288305,
+      "f1-score": 0.9990122665812412,
+      "support": 74893.0
+    },
+    "1": {
+      "precision": 0.12727272727272726,
+      "recall": 0.06542056074766354,
+      "f1-score": 0.08641975308641973,
+      "support": 107.0
+    },
+    "accuracy": 0.9980266666666666,
+    "macro avg": {
+      "precision": 0.5629692077220264,
+      "recall": 0.532389823188247,
+      "f1-score": 0.5427160098338305,
+      "support": 75000.0
+    },
+    "weighted avg": {
+      "precision": 0.9974225008804436,
+      "recall": 0.9980266666666666,
+      "f1-score": 0.9977103012619888,
+      "support": 75000.0
+    }
+  }
+}

@@ -1,46 +1,76 @@
-paysplit-env/
-backend/.venv/
-.env
-__pycache__/
-*.pyc
+# ───────────── Basics ─────────────
 .DS_Store
-# Python
-venv/
-backend/venv/
-frontend/venv/
-ml/venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.swp
+*.swo
+*.tmp
+*.bak
+*.cache
+
+# ───────────── Python / venv ─────────────
+venv/
+backend/venv/
+frontend/venv/
+ml/venv/
+backend/.venv/
+.paysplit-env/
 .Python
 *.so
 *.egg-info/
 dist/
 build/
 
-# Node
+# ───────────── Node ─────────────
 node_modules/
 package-lock.json
 
-# OS
-.DS_Store
-*.swp
-*.swo
-
-# IDE
+# ───────────── IDE ─────────────
 .vscode/
 .idea/
 
-# Env
-# env files (never commit secrets)
+# ───────────── Env / Secrets ─────────────
 .env
+.env.local
 backend/.env
 frontend/.env
 frontend/.env.local
-.env.local
 
-# local db
+# ───────────── Local DB ─────────────
 *.db
 backend/*.db
 
+# ───────────── ML Data & Artifacts ─────────────
+# Never commit datasets
+ml/data/
+
+# TF artifacts can be huge → ignore
+ml/artifacts/fraud_tf/
+
+# Ignore ALL XGB artifacts by default...
+ml/artifacts/fraud_xgb/*
+
+# ...but allow the model + metadata/reports needed for backend startup
+!ml/artifacts/fraud_xgb/fraud_xgb_model.json
+!ml/artifacts/fraud_xgb/train_meta.json
+!ml/artifacts/fraud_xgb/eval_val.json
+!ml/artifacts/fraud_xgb/eval_test.json
+
+# Optional: keep pipeline summary out of git (recommended)
+ml/artifacts/fraud_pipeline_summary.json
+
+# Optional: keep card recommender weights out of git (recommended)
+ml/artifacts/card_recommender.pt
+
+# Optional: lock file (if you don’t want it committed)
+requirements-lock.txt
+
+# ───────────── Logs / Coverage ─────────────
+*.log
+logs/
+.coverage
+htmlcov/
+.pytest_cache/
+.ipynb_checkpoints/

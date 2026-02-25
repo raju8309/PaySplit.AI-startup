@@ -9,6 +9,12 @@ import numpy as np
 import xgboost as xgb
 
 
+# Resolve repo root reliably (works even when backend runs from /backend)
+# File: <repo>/backend/ml/fraud_service.py
+REPO_ROOT = Path(__file__).resolve().parents[2]  # <repo>
+DEFAULT_MODEL_PATH = REPO_ROOT / "ml" / "artifacts" / "fraud_xgb" / "fraud_xgb_model.json"
+
+
 @dataclass
 class FraudPrediction:
     probability: float
@@ -28,9 +34,16 @@ class FraudModelXGB:
     def __init__(self, model_path: Optional[str] = None, default_threshold: float = 0.93):
         # Allow override via environment variable
         env_path = os.getenv("FRAUD_XGB_MODEL_PATH")
-        final_path = env_path or model_path or "ml/artifacts/fraud_xgb/fraud_xgb_model.json"
+        final_path = env_path or model_path
 
-        self.model_path = Path(final_path)
+        # If user passed a path (or env var), respect it.
+        # If it's relative, resolve it from repo root so it works no matter where uvicorn is started.
+        if final_path:
+            p = Path(final_path)
+            self.model_path = p if p.is_absolute() else (REPO_ROOT / p)
+        else:
+            self.model_path = DEFAULT_MODEL_PATH
+
         self.default_threshold = float(default_threshold)
 
         self.booster: Optional[xgb.Booster] = None
@@ -42,7 +55,7 @@ class FraudModelXGB:
     def load(self) -> None:
         """Load model into memory (call once at FastAPI startup)."""
         if not self.model_path.exists():
-            raise FileNotFoundError(f"Fraud XGB model not found at: {self.model_path}")
+            raise FileNotFoundError(f"Fraud XGB model not found at: {self.model_path.resolve()}")
 
         booster = xgb.Booster()
         booster.load_model(str(self.model_path))

@@ -1,25 +1,22 @@
 from __future__ import annotations
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from backend.config import settings
-from backend.ml.fraud_service import FraudModelXGB, build_features_from_fields
+from config import settings
+from ml.fraud_service import build_features_from_fields
 
 router = APIRouter(prefix="/api/ml", tags=["ML - Fraud"])
-
-# Load once (startup)
-fraud_model = FraudModelXGB(
-    model_path=getattr(settings, "FRAUD_XGB_MODEL_PATH", "ml/artifacts/fraud_xgb/fraud_xgb_model.json"),
-    default_threshold=float(getattr(settings, "FRAUD_THRESHOLD", 0.93)),
-)
 
 
 class FraudRequest(BaseModel):
     # Option A: direct features (best for now)
-    features: Optional[List[float]] = Field(default=None, description="Exactly 11 features in model order")
+    features: Optional[List[float]] = Field(
+        default=None,
+        description="Exactly 11 features in model order"
+    )
 
     # Option B: fields (only used if features=None)
     amount: Optional[float] = None
@@ -44,22 +41,25 @@ class FraudResponse(BaseModel):
 
 
 @router.post("/fraud", response_model=FraudResponse)
-def predict_fraud(req: FraudRequest):
+def predict_fraud(req: FraudRequest, request: Request):
     try:
-        if req.features is not None:
-            feats = req.features
-        else:
-            feats = build_features_from_fields(req.model_dump())
+        fraud_model = getattr(request.app.state, "fraud_model", None)
+        if fraud_model is None:
+            raise HTTPException(status_code=503, detail="Fraud model not loaded on server startup")
+
+        feats = req.features if req.features is not None else build_features_from_fields(req.model_dump())
 
         pred = fraud_model.predict(features=feats, threshold=req.threshold)
 
         return FraudResponse(
-            probability=pred.probability,
-            threshold=pred.threshold,
-            is_fraud=pred.is_fraud,
+            probability=float(pred.probability),
+            threshold=float(pred.threshold),
+            is_fraud=bool(pred.is_fraud),
         )
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fraud prediction failed: {e}")

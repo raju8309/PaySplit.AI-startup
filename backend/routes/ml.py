@@ -123,19 +123,39 @@ def build_fraud_features(
 
 
 def predict_fraud_prob(request: Request, features: List[float]) -> Optional[float]:
+    """Return fraud probability if a fraud model is loaded, else None.
+
+    Supports either:
+    - app.state.fraud_model = FraudModelXGB service (preferred)
+    - app.state.fraud_model = xgboost.Booster (legacy)
     """
-    Returns fraud probability using XGBoost if model is loaded, else None.
-    """
-    booster = getattr(request.app.state, "fraud_model", None)
-    if booster is None:
+    model = getattr(request.app.state, "fraud_model", None)
+    if model is None:
         return None
 
-    import xgboost as xgb
+    # Preferred: our service wrapper exposes predict_proba(features)
+    if hasattr(model, "predict_proba") and callable(getattr(model, "predict_proba")):
+        return float(model.predict_proba(features))
 
-    X = np.array([features], dtype=np.float32)
-    dmat = xgb.DMatrix(X)
-    prob = float(booster.predict(dmat)[0])
-    return prob
+    # Fallback: service exposes predict(features) -> dataclass with .probability
+    if hasattr(model, "predict") and callable(getattr(model, "predict")):
+        try:
+            out = model.predict(features)  # type: ignore
+            if hasattr(out, "probability"):
+                return float(out.probability)
+        except TypeError:
+            # This may be a native Booster.predict expecting a DMatrix; handled below
+            pass
+
+    # Legacy: native Booster stored in state
+    try:
+        import xgboost as xgb
+
+        X = np.array([features], dtype=np.float32)
+        dmat = xgb.DMatrix(X)
+        return float(model.predict(dmat)[0])
+    except Exception as e:
+        raise RuntimeError(f"Fraud prediction failed: {e}")
 
 
 # -------- Routes --------
@@ -152,7 +172,8 @@ def recommend_allocation(request: RecommendRequest, fastapi_request: Request):
         cards_dict = [card.model_dump() for card in request.cards]
 
         # ---- Fraud first ----
-        feature_names = getattr(fastapi_request.app.state, "fraud_feature_names", [f"f{i}" for i in range(11)])
+        input_dim = getattr(getattr(fastapi_request.app.state, "fraud_model", None), "input_dim", 11)
+        feature_names = getattr(fastapi_request.app.state, "fraud_feature_names", [f"f{i}" for i in range(int(input_dim))])
         features = build_fraud_features(
             amount=request.transaction_amount,
             cards=cards_dict,

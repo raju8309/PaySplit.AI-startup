@@ -53,12 +53,18 @@ app.add_middleware(
 )
 
 
-# ── Optional ML Router (prevents startup crash if model artifacts missing) ─
+# ── Optional ML Routers (prevents startup crash if artifacts/deps missing) ─
 try:
     from routes.ml import router as ml_router
 except Exception as e:
     ml_router = None
     logger.warning(f"ML routes disabled (reason: {e})")
+
+try:
+    from routes.fraud import router as fraud_router
+except Exception as e:
+    fraud_router = None
+    logger.warning(f"Fraud routes disabled (reason: {e})")
 
 
 # ── Routers ───────────────────────────────────────────────────────────────
@@ -71,6 +77,10 @@ app.include_router(cards_router)
 # ML only if artifacts exist
 if ml_router:
     app.include_router(ml_router)
+
+# Fraud endpoint only if available
+if fraud_router:
+    app.include_router(fraud_router)
 
 # ✅ Week 8
 app.include_router(analytics_router)
@@ -96,43 +106,44 @@ def on_startup():
         logger.warning(f"DB not ready yet. Skipping create_all. Error: {e}")
 
     # 2) Load fraud model (XGBoost) once at startup
+    app.state.fraud_model = None
+    app.state.fraud_threshold = getattr(settings, "FRAUD_THRESHOLD", 0.93)
+
     try:
-        repo_root = Path(__file__).resolve().parents[1]
+        repo_root = Path(__file__).resolve().parents[1]  # <repo>
         model_path = repo_root / "ml" / "artifacts" / "fraud_xgb" / "fraud_xgb_model.json"
 
         if not model_path.exists():
             logger.warning(f"Fraud model not found at {model_path}. Fraud gate disabled.")
-            app.state.fraud_model = None
-            print("FRAUD MODEL LOADED?", app.state.fraud_model is not None)
-            logger.info(f"FRAUD MODEL LOADED? {app.state.fraud_model is not None}")
-            return
+        else:
+            # Preferred: use our service wrapper if available
+            if FraudModelXGB is not None:
+                # Use our wrapper and load ONCE at startup
+                model = FraudModelXGB(
+                    model_path=str(model_path),
+                    default_threshold=float(getattr(settings, "FRAUD_THRESHOLD", 0.93)),
+                )
+                model.load()
+                app.state.fraud_model = model
+                logger.info("Fraud model loaded via FraudModelXGB service (ready=True).")
+            else:
+                # Fallback: load raw booster directly (no wrapper)
+                import xgboost as xgb
 
-        # Preferred: use our service wrapper if available
-        if FraudModelXGB is not None:
-            fraud = FraudModelXGB(model_path=str(model_path))
-            app.state.fraud_model = fraud
-            app.state.fraud_threshold = settings.FRAUD_THRESHOLD
-            logger.info("Fraud model loaded via FraudModelXGB service.")
-            print("FRAUD MODEL LOADED?", app.state.fraud_model is not None)
-            logger.info(f"FRAUD MODEL LOADED? {app.state.fraud_model is not None}")
-            return
-
-        # Fallback: load raw booster directly
-        import xgboost as xgb
-
-        booster = xgb.Booster()
-        booster.load_model(str(model_path))
-        app.state.fraud_model = booster
-        app.state.fraud_threshold = settings.FRAUD_THRESHOLD
-        logger.info("Fraud model loaded via raw XGBoost Booster.")
-        print("FRAUD MODEL LOADED?", app.state.fraud_model is not None)
-        logger.info(f"FRAUD MODEL LOADED? {app.state.fraud_model is not None}")
+                booster = xgb.Booster()
+                booster.load_model(str(model_path))
+                app.state.fraud_model = booster
+                logger.info("Fraud model loaded via raw XGBoost Booster.")
 
     except Exception as e:
         logger.warning(f"Fraud model load failed. Fraud gate disabled. Error: {e}")
         app.state.fraud_model = None
-        print("FRAUD MODEL LOADED?", app.state.fraud_model is not None)
-        logger.info(f"FRAUD MODEL LOADED? {app.state.fraud_model is not None}")
+
+    # One clear startup log/print
+    loaded = app.state.fraud_model is not None
+    ready = bool(getattr(app.state.fraud_model, "ready", loaded))
+    print("FRAUD MODEL LOADED?", loaded, "READY?", ready)
+    logger.info(f"FRAUD MODEL LOADED? {loaded} READY? {ready}")
 
 
 if __name__ == "__main__":

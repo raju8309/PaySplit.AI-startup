@@ -11,29 +11,38 @@ import MLTest from "./pages/MLTest";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 
+import Dashboard from "./pages/Dashboard";
+import Analytics from "./pages/Analytics";
+
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/cards" element={<CardManager />} />
-          <Route path="/ml-test" element={<MLTest />} />
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
 
-          {/* Payment routes */}
-          <Route path="/payment/success" element={<PaymentSuccess />} />
-          <Route path="/payment/cancel" element={<PaymentCancel />} />
+            {/* Week 8 */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analytics" element={<Analytics />} />
 
-          {/* Catch-all */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            <Route path="/cards" element={<CardManager />} />
+            <Route path="/ml-test" element={<MLTest />} />
+
+            {/* Payment routes */}
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/cancel" element={<PaymentCancel />} />
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

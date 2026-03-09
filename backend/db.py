@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base  # ✅ CHANGED
-from config import settings  # ✅ CHANGED
+from models import Base  
+from config import settings  
 
-# ✅ engine is required by main startup hook
+#engine is required by main startup hook
 engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

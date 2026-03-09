@@ -1,11 +1,11 @@
 import logging
 from pathlib import Path
-import json
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.middleware.sessions import SessionMiddleware  # ✅ REQUIRED for Authlib OAuth
 
 from config import settings
 from routes.health import router as health_router
@@ -15,10 +15,9 @@ from routes.payments import router as payments_router
 from routes.cards import router as cards_router
 
 # Fraud model loader/service (XGBoost)
-# Note: this imports from backend/ml (a local package/namespace) when running `python -m uvicorn main:app` inside `backend/`.
 try:
     from ml.fraud_service import FraudModelXGB
-except Exception:  # keep startup from crashing if optional deps/files are missing
+except Exception:
     FraudModelXGB = None
 
 # ✅ Week 8 routes
@@ -40,6 +39,16 @@ class CoopMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(CoopMiddleware)
+
+
+# ── ✅ Sessions (REQUIRED for Google OAuth via Authlib) ───────────────────
+# Put this AFTER CoopMiddleware and BEFORE CORS is fine.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=getattr(settings, "SECRET_KEY", "dev-secret-change-me"),
+    same_site="lax",
+    https_only=False,  # set True in production (HTTPS)
+)
 
 
 # ── CORS ──────────────────────────────────────────────────────────────────
@@ -74,15 +83,12 @@ app.include_router(settlements_router)
 app.include_router(payments_router)
 app.include_router(cards_router)
 
-# ML only if artifacts exist
 if ml_router:
     app.include_router(ml_router)
 
-# Fraud endpoint only if available
 if fraud_router:
     app.include_router(fraud_router)
 
-# ✅ Week 8
 app.include_router(analytics_router)
 app.include_router(reports_router)
 
@@ -116,9 +122,7 @@ def on_startup():
         if not model_path.exists():
             logger.warning(f"Fraud model not found at {model_path}. Fraud gate disabled.")
         else:
-            # Preferred: use our service wrapper if available
             if FraudModelXGB is not None:
-                # Use our wrapper and load ONCE at startup
                 model = FraudModelXGB(
                     model_path=str(model_path),
                     default_threshold=float(getattr(settings, "FRAUD_THRESHOLD", 0.93)),
@@ -127,7 +131,6 @@ def on_startup():
                 app.state.fraud_model = model
                 logger.info("Fraud model loaded via FraudModelXGB service (ready=True).")
             else:
-                # Fallback: load raw booster directly (no wrapper)
                 import xgboost as xgb
 
                 booster = xgb.Booster()
@@ -139,7 +142,6 @@ def on_startup():
         logger.warning(f"Fraud model load failed. Fraud gate disabled. Error: {e}")
         app.state.fraud_model = None
 
-    # One clear startup log/print
     loaded = app.state.fraud_model is not None
     ready = bool(getattr(app.state.fraud_model, "ready", loaded))
     print("FRAUD MODEL LOADED?", loaded, "READY?", ready)

@@ -24,13 +24,12 @@ reset_tokens: dict = {}
 # Initialize OAuth
 oauth = OAuth()
 oauth.register(
-    name='google',
+    name="google",
     client_id=settings.GOOGLE_CLIENT_ID,
     client_secret=settings.GOOGLE_CLIENT_SECRET,
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={'scope': 'openid email profile'}
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
 )
-
 
 # ── Schemas ───────────────────────────────────────────────────────────────
 class SignupRequest(BaseModel):
@@ -38,20 +37,25 @@ class SignupRequest(BaseModel):
     email: str
     password: str
 
+
 class LoginRequest(BaseModel):
     email: str
     password: str
 
+
 class ForgotPasswordRequest(BaseModel):
     email: str
+
 
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
 
 class UserResponse(BaseModel):
     id: str
@@ -60,6 +64,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -71,28 +76,32 @@ class TokenResponse(BaseModel):
 def hash_password(password: str) -> str:
     return pwd_hasher.hash(password)
 
+
 def verify_password(plain: str, hashed: str) -> bool:
     try:
         pwd_hasher.verify(hashed, plain)
         return True
-    except:
+    except Exception:
         return False
+
 
 def create_access_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
         "type": "access",
-        "exp": datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        "exp": datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
 
 def create_refresh_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
         "type": "refresh",
-        "exp": datetime.utcnow() + timedelta(days=30)
+        "exp": datetime.utcnow() + timedelta(days=30),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
 
 def decode_token(token: str) -> dict:
     try:
@@ -102,7 +111,11 @@ def decode_token(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> User:
+
+def get_current_user(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+) -> User:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
     token = authorization.split(" ")[1]
@@ -123,7 +136,7 @@ def signup(req: SignupRequest, db: Session = Depends(get_db)):
     user = User(
         name=req.name,
         email=req.email,
-        password_hash=hash_password(req.password)
+        password_hash=hash_password(req.password),
     )
     db.add(user)
     db.commit()
@@ -132,7 +145,7 @@ def signup(req: SignupRequest, db: Session = Depends(get_db)):
     return TokenResponse(
         access_token=create_access_token(str(user.id)),
         refresh_token=create_refresh_token(str(user.id)),
-        user=UserResponse(id=str(user.id), name=user.name, email=user.email)
+        user=UserResponse(id=str(user.id), name=user.name, email=user.email),
     )
 
 
@@ -146,7 +159,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     return TokenResponse(
         access_token=create_access_token(str(user.id)),
         refresh_token=create_refresh_token(str(user.id)),
-        user=UserResponse(id=str(user.id), name=user.name, email=user.email)
+        user=UserResponse(id=str(user.id), name=user.name, email=user.email),
     )
 
 
@@ -159,6 +172,7 @@ def get_profile(current_user: User = Depends(get_current_user)):
 # ── NEW: Token Refresh ────────────────────────────────────────────────────
 class RefreshRequest(BaseModel):
     refresh_token: str
+
 
 @router.post("/refresh")
 def refresh_token(req: RefreshRequest, db: Session = Depends(get_db)):
@@ -192,7 +206,7 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     token = str(uuid.uuid4())
     reset_tokens[token] = {
         "user_id": str(user.id),
-        "expires": datetime.utcnow() + timedelta(minutes=15)
+        "expires": datetime.utcnow() + timedelta(minutes=15),
     }
 
     # In production: send email with reset link
@@ -200,7 +214,7 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     return {
         "message": "Password reset token generated.",
         "reset_token": token,  # Remove this in production!
-        "expires_in": "15 minutes"
+        "expires_in": "15 minutes",
     }
 
 
@@ -238,7 +252,7 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
 def change_password(
     req: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Change password for logged-in user"""
     if not verify_password(req.current_password, current_user.password_hash):
@@ -253,40 +267,58 @@ def change_password(
     return {"message": "Password changed successfully."}
 
 
-# ── Existing: Google OAuth ────────────────────────────────────────────────
+# ── Google OAuth ──────────────────────────────────────────────────────────
 @router.get("/google")
 async def google_login(request: Request):
+    """
+    Starts Google OAuth.
+    NOTE: This requires SessionMiddleware to be installed in main.py,
+    and itsdangerous installed in backend venv.
+    """
     redirect_uri = settings.GOOGLE_REDIRECT_URI
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
+
 @router.get("/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
+    """
+    Completes Google OAuth and redirects to frontend callback route:
+      http://localhost:5173/oauth/callback?access_token=...
+    """
     try:
         token = await oauth.google.authorize_access_token(request)
-        user_info = token.get('userinfo')
+        user_info = token.get("userinfo")
         if not user_info:
             raise HTTPException(status_code=400, detail="Failed to get user info")
 
-        email = user_info.get('email')
-        name = user_info.get('name')
-        google_id = user_info.get('sub')
+        email = user_info.get("email")
+        name = user_info.get("name")
+        google_id = user_info.get("sub")
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Google did not return an email address")
 
         user = db.query(User).filter(User.email == email).first()
 
         if not user:
             user = User(
-                name=name,
+                name=name or "Google User",
                 email=email,
                 google_id=google_id,
-                password_hash=""
+                password_hash="",  # OAuth user; no local password
             )
             db.add(user)
             db.commit()
             db.refresh(user)
 
         jwt_token = create_access_token(str(user.id))
-        frontend_url = f"http://localhost:5173/auth/callback?token={jwt_token}"
+
+        frontend_base = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
+        frontend_url = f"{frontend_base}/oauth/callback?access_token={jwt_token}"
+
         return RedirectResponse(url=frontend_url)
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Google login failed: {str(e)}")

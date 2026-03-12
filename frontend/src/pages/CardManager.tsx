@@ -127,13 +127,13 @@ export default function CardManager() {
     setEditingCard(null);
   };
 
-  const inputCls = "w-full rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition";
+  const inputCls = "w-full rounded-xl border border-border bg-secondary/60 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition";
 
   return (
     <div className="min-h-screen bg-background text-foreground font-body">
 
       {/* ── Navbar ── */}
-      <nav className="sticky top-0 z-50 glass-strong border-b border-border/60">
+      <nav className="sticky top-0 z-50 glass-strong border-b border-border">
         <div className="mx-auto max-w-2xl px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/dashboard')}
@@ -172,7 +172,7 @@ export default function CardManager() {
         {loading ? (
           <div className="space-y-4">
             {[0, 1].map((i) => (
-              <div key={i} className="h-48 rounded-3xl bg-secondary/40 animate-pulse" />
+              <div key={i} className="h-48 rounded-3xl bg-secondary/60 animate-pulse" />
             ))}
           </div>
         ) : cards.length === 0 ? (
@@ -324,7 +324,7 @@ export default function CardManager() {
         <div className="glass gradient-border rounded-2xl overflow-hidden">
           <button
             onClick={() => setCsvOpen(!csvOpen)}
-            className="w-full flex items-center justify-between px-6 py-4 hover:bg-secondary/20 transition"
+            className="w-full flex items-center justify-between px-6 py-4 hover:bg-secondary/40 transition"
           >
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center">
@@ -422,7 +422,7 @@ export default function CardManager() {
                         <span className="w-36 text-xs font-medium text-muted-foreground">{category}</span>
                         <input type="number" min="0" max="100" step="0.1" value={rate}
                           onChange={(e) => setCategoryRewards({ ...categoryRewards, [category]: Number(e.target.value) })}
-                          className="flex-1 rounded-xl border border-border bg-secondary/40 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary transition"
+                          className="flex-1 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary transition"
                           placeholder="0" />
                         <span className="text-xs text-muted-foreground">%</span>
                       </div>
@@ -436,7 +436,7 @@ export default function CardManager() {
                     <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Card Color</label>
                     <input type="color" value={formData.color}
                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      className="w-full h-11 rounded-xl border border-border bg-secondary/40 cursor-pointer" />
+                      className="w-full h-11 rounded-xl border border-border bg-secondary/60 cursor-pointer" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Icon</label>

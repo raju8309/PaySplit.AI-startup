@@ -169,24 +169,24 @@ export default function Analytics() {
     <div className="min-h-screen bg-background text-foreground font-body">
 
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 glass-strong border-b border-border/60">
+      <nav className="sticky top-0 z-50 glass-strong border-b border-border">
         <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate("/dashboard")}
-              className="h-9 w-9 rounded-xl border border-border bg-secondary/30 flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-all">
+              className="h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-secondary transition">
               <ArrowLeft size={15} />
             </button>
             <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center glow-primary">
               <Zap size={16} className="text-primary-foreground fill-primary-foreground" />
             </div>
-            <span className="font-display text-lg font-bold tracking-tight">Analytics</span>
+            <span className="font-display text-lg">PaySplit<span className="text-primary">.ai</span></span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => load(true)}
               disabled={refreshing}
-              className="h-9 w-9 rounded-xl border border-border bg-secondary/30 flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+              className="h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-secondary transition"
             >
               <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
             </button>
@@ -194,7 +194,7 @@ export default function Analytics() {
               href={`${API_BASE}/api/reports/payments.csv`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-secondary/30 text-xs font-bold text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+              className="flex items-center gap-2 border border-border rounded-full px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary transition"
             >
               <Download size={13} />
               Export CSV
@@ -207,14 +207,14 @@ export default function Analytics() {
 
         {/* Heading */}
         <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold tracking-tight">Your Overview</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Last 30 days of payment activity</p>
+          <h1 className="font-display text-4xl">Your Overview</h1>
+          <p className="text-sm text-muted-foreground mt-1">Last 30 days of payment activity</p>
         </div>
 
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {statCards.map((s, i) => (
-            <div key={i} className="glass gradient-border rounded-2xl p-5">
+            <div key={i} className="glass gradient-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{s.label}</p>
                 <div className="h-8 w-8 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center">
@@ -231,7 +231,7 @@ export default function Analytics() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 
           {/* Monthly spend bar chart — spans 2 cols */}
-          <div className="md:col-span-2 glass gradient-border rounded-2xl p-6">
+          <div className="md:col-span-2 glass gradient-border rounded-xl p-6">
             <div className="mb-5">
               <h2 className="font-display font-bold text-base">Monthly Spend</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Last 6 months of expenses</p>
@@ -262,7 +262,7 @@ export default function Analytics() {
           </div>
 
           {/* Payment status donut */}
-          <div className="glass gradient-border rounded-2xl p-6">
+          <div className="glass gradient-border rounded-xl p-6">
             <div className="mb-5">
               <h2 className="font-display font-bold text-base">Payment Status</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Breakdown by status</p>
@@ -303,7 +303,7 @@ export default function Analytics() {
 
         {/* ── Status breakdown table ── */}
         {byStatus.length > 0 && (
-          <div className="glass gradient-border rounded-2xl p-6 mb-8">
+          <div className="glass gradient-border rounded-xl p-6 mb-8">
             <h2 className="font-display font-bold text-base mb-4">Payment Breakdown</h2>
             <div className="divide-y divide-border/40">
               {byStatus.map((b, i) => {
@@ -341,7 +341,7 @@ export default function Analytics() {
         {/* ── Fraud status card ── */}
         <div className={`rounded-2xl border p-6 flex items-start gap-4 ${
           fraudProb === null
-            ? "border-border bg-secondary/20"
+            ? "border-border bg-secondary/40"
             : fraudClean
             ? "border-primary/30 bg-primary/5"
             : "border-yellow-500/30 bg-yellow-500/5"

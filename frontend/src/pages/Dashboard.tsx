@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CreditCard, DollarSign, ShieldCheck, ShieldAlert,
-  Plus, LogOut, Clock, Zap, TrendingUp,
+  Plus, LogOut, Clock, Zap, TrendingUp, Wallet,
 } from "lucide-react";
 
 const API_BASE =
@@ -183,7 +183,27 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="flex flex-wrap gap-3 mt-6">
+        {/* ── Virtual Card Banner ── */}
+        <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
+              <Wallet size={16} className="text-primary-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">PaySplit Virtual Card</p>
+              <p className="text-xs text-muted-foreground mt-0.5">One card. Splits across all your cards automatically.</p>
+            </div>
+          </div>
+          <Link
+            to="/virtual-card"
+            className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition"
+          >
+            <CreditCard size={14} /> My Virtual Card
+          </Link>
+        </div>
+
+        {/* ── Action Buttons ── */}
+        <div className="flex flex-wrap gap-3 mt-4">
           <Link to="/split" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition glow-primary">
             <Plus size={15} /> Create Split
           </Link>

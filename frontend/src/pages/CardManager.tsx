@@ -1,463 +1,381 @@
-import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ChevronDown, Upload } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import CSVUpload from '../components/CSVUpload';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Zap, Plus, Trash2, CreditCard, X } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  CardNumberElement,
+  CardExpiryElement,
+  CardCvcElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 
-interface Card {
+const STRIPE_PK = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
+const stripePromise = loadStripe(STRIPE_PK);
+
+const API_BASE =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ||
+  "http://127.0.0.1:8000";
+
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem("access_token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+type Card = {
   id: number;
   name: string;
   card_type: string;
   last_four: string | null;
   limit: number;
   balance: number;
-  available: number;
   rewards_rate: number;
-  category_multipliers: { [key: string]: number };
-  is_active: boolean;
-  is_preferred: boolean;
-  color: string;
-  icon: string;
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  visa: "#1a1f71",
+  mastercard: "#eb001b",
+  amex: "#2e77bc",
+  discover: "#f76f20",
+};
+
+const ELEMENT_STYLE = {
+  style: {
+    base: {
+      fontSize: "14px",
+      fontFamily: "system-ui, sans-serif",
+      color: "#111827",
+      "::placeholder": { color: "#9ca3af" },
+    },
+    invalid: { color: "#ef4444" },
+  },
+};
+
+// ── Inner form ────────────────────────────────────────────────────────────────
+function AddCardForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  const [nameOnCard, setNameOnCard] = useState("");
+  const [zip, setZip] = useState("");
+  const [cardBrand, setCardBrand] = useState("unknown");
+  const [cardReady, setCardReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async () => {
+    if (!stripe || !elements) return;
+    if (!nameOnCard.trim()) { setError("Name on card is required"); return; }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      const cardNumber = elements.getElement(CardNumberElement);
+      if (!cardNumber) throw new Error("Card element not ready");
+
+      const { paymentMethod, error: stripeError } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardNumber,
+        billing_details: {
+          name: nameOnCard,
+          address: { postal_code: zip },
+        },
+      });
+
+      if (stripeError) throw new Error(stripeError.message);
+      if (!paymentMethod) throw new Error("Failed to create payment method");
+
+      const res = await fetch(`${API_BASE}/api/cards/`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          name: nameOnCard,
+          card_type: paymentMethod.card?.brand ?? "unknown",
+          last_four: paymentMethod.card?.last4 ?? null,
+          stripe_payment_method_id: paymentMethod.id,
+          limit: 10000,
+          balance: 0,
+          rewards_rate: 0.01,
+          category_multipliers: {},
+          color: "#2d6a4f",
+          icon: "card",
+        }),
+      });
+
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || "Failed to save card");
+      }
+
+      onSuccess();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass = "w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-green-600 transition";
+  const elementWrap: React.CSSProperties = {
+    backgroundColor: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "12px",
+    padding: "12px 16px",
+    position: "relative",
+    zIndex: 1,
+    cursor: "text",
+  };
+
+  return (
+    <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* Name on card */}
+      <div>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+          Name on Card
+        </label>
+        <input
+          type="text"
+          placeholder="John Doe"
+          value={nameOnCard}
+          onChange={e => setNameOnCard(e.target.value)}
+          autoFocus
+          style={{ width: "100%", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+        />
+      </div>
+
+      {/* Card number */}
+      <div>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+          Card Number
+          {cardBrand !== "unknown" && (
+            <span style={{ marginLeft: 8, color: "#2d6a4f", fontWeight: 800, textTransform: "capitalize" }}>{cardBrand}</span>
+          )}
+        </label>
+        <div style={elementWrap}>
+          <CardNumberElement
+            options={ELEMENT_STYLE}
+            onReady={() => setCardReady(true)}
+            onChange={e => setCardBrand(e.brand ?? "unknown")}
+          />
+        </div>
+      </div>
+
+      {/* Expiry + CVC */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+            Expiry
+          </label>
+          <div style={elementWrap}>
+            <CardExpiryElement options={ELEMENT_STYLE} />
+          </div>
+        </div>
+        <div>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+            CVV
+          </label>
+          <div style={elementWrap}>
+            <CardCvcElement options={ELEMENT_STYLE} />
+          </div>
+        </div>
+      </div>
+
+      {/* ZIP */}
+      <div>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+          ZIP Code
+        </label>
+        <input
+          type="text"
+          placeholder="03101"
+          maxLength={10}
+          value={zip}
+          onChange={e => setZip(e.target.value.replace(/\D/g, ""))}
+          style={{ width: "100%", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: "12px 16px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+        />
+      </div>
+
+      {/* Security note */}
+      <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>
+        🔒 Card details are encrypted by Stripe. PaySplit never stores your raw card number or CVV.
+      </p>
+
+      {error && (
+        <p style={{ fontSize: 12, color: "#ef4444", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 14px", margin: 0 }}>
+          {error}
+        </p>
+      )}
+
+      {/* Buttons */}
+      <div style={{ display: "flex", gap: 12 }}>
+        <button
+          onClick={onCancel}
+          style={{ flex: 1, borderRadius: 12, border: "1px solid #e5e7eb", padding: "12px", fontSize: 14, fontWeight: 600, color: "#6b7280", background: "#fff", cursor: "pointer" }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={saving || !stripe || !cardReady}
+          style={{ flex: 1, borderRadius: 12, border: "none", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: saving || !stripe || !cardReady ? "#9ca3af" : "#2d6a4f", cursor: saving || !stripe || !cardReady ? "not-allowed" : "pointer" }}
+        >
+          {saving ? "Saving..." : "Add Card"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
-interface CardFormData {
-  name: string;
-  card_type: string;
-  last_four: string;
-  limit: number;
-  balance: number;
-  rewards_rate: number;
-  category_multipliers: { [key: string]: number };
-  color: string;
-  icon: string;
-}
-
-function bestRewardLabel(card: Card): string {
-  const entries = Object.entries(card.category_multipliers ?? {});
-  if (entries.length > 0) {
-    const [cat, rate] = entries.sort((a, b) => b[1] - a[1])[0];
-    return `${Math.round((rate as number) * 100)}% ${cat}`;
-  }
-  if (card.rewards_rate > 0) return `${Math.round(card.rewards_rate * 100)}% Everything`;
-  return '0% Base';
-}
-
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function CardManager() {
   const navigate = useNavigate();
-  const [cards, setCards]           = useState<Card[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [showForm, setShowForm]     = useState(false);
-  const [editingCard, setEditingCard] = useState<Card | null>(null);
-  const [error, setError]           = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [csvOpen, setCsvOpen]       = useState(false);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
-  const [formData, setFormData] = useState<CardFormData>({
-    name: '', card_type: 'Visa', last_four: '', limit: 1000,
-    balance: 0, rewards_rate: 0.01, category_multipliers: {},
-    color: '#3B82F6', icon: '💳'
-  });
+  useEffect(() => { loadCards(); }, []);
 
-  const [categoryRewards, setCategoryRewards] = useState({
-    'Food & Dining': 0, 'Travel': 0, 'Shopping': 0, 'Gas': 0, 'Entertainment': 0
-  });
-
-  // ── Fetch ────────────────────────────────────────────────────────────────────
-  const fetchCards = async () => {
+  const loadCards = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/cards/');
-      if (!response.ok) throw new Error('Failed to fetch cards');
-      setCards(await response.json());
-      setError(null);
-    } catch { setError('Failed to load cards'); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { fetchCards(); }, []);
-
-  // ── Submit ───────────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const multipliers: { [key: string]: number } = {};
-    Object.entries(categoryRewards).forEach(([cat, rate]) => {
-      if (rate > 0) multipliers[cat] = rate / 100;
-    });
-    const cardData = { ...formData, rewards_rate: formData.rewards_rate / 100, category_multipliers: multipliers };
-    try {
-      const url = editingCard ? `http://localhost:8000/api/cards/${editingCard.id}` : 'http://localhost:8000/api/cards/';
-      const res = await fetch(url, {
-        method: editingCard ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cardData)
-      });
-      if (!res.ok) throw new Error('Failed to save card');
-      await fetchCards(); resetForm(); setShowForm(false); setError(null);
-    } catch { setError('Failed to save card'); }
+      const res = await fetch(`${API_BASE}/api/cards/`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setCards(Array.isArray(data) ? data : data.data ?? []);
+      }
+    } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
-  // ── Delete ───────────────────────────────────────────────────────────────────
-  const handleDelete = async (cardId: number) => {
-    if (!confirm('Delete this card?')) return;
+  const deleteCard = async (id: number) => {
+    if (!confirm("Remove this card?")) return;
     try {
-      await fetch(`http://localhost:8000/api/cards/${cardId}`, { method: 'DELETE' });
-      await fetchCards();
-    } catch { setError('Failed to delete card'); }
+      await fetch(`${API_BASE}/api/cards/${id}`, { method: "DELETE", headers: authHeaders() });
+      setCards(cards.filter(c => c.id !== id));
+    } catch (e) { console.error(e); }
   };
 
-  // ── Edit ─────────────────────────────────────────────────────────────────────
-  const handleEdit = (card: Card) => {
-    setEditingCard(card);
-    setFormData({
-      name: card.name, card_type: card.card_type, last_four: card.last_four || '',
-      limit: card.limit, balance: card.balance, rewards_rate: card.rewards_rate * 100,
-      category_multipliers: card.category_multipliers, color: card.color, icon: card.icon
-    });
-    const newCat = { ...categoryRewards };
-    Object.entries(card.category_multipliers).forEach(([cat, rate]) => {
-      if (cat in newCat) newCat[cat as keyof typeof categoryRewards] = (rate as number) * 100;
-    });
-    setCategoryRewards(newCat);
-    setShowForm(true);
+  const handleSuccess = async () => {
+    setShowModal(false);
+    await loadCards();
   };
-
-  const resetForm = () => {
-    setFormData({ name: '', card_type: 'Visa', last_four: '', limit: 1000, balance: 0, rewards_rate: 0.01, category_multipliers: {}, color: '#3B82F6', icon: '💳' });
-    setCategoryRewards({ 'Food & Dining': 0, 'Travel': 0, 'Shopping': 0, 'Gas': 0, 'Entertainment': 0 });
-    setEditingCard(null);
-  };
-
-  const inputCls = "w-full rounded-xl border border-border bg-secondary/60 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition";
 
   return (
     <div className="min-h-screen bg-background text-foreground font-body">
 
-      {/* ── Navbar ── */}
-      <nav className="sticky top-0 z-50 glass-strong border-b border-border">
-        <div className="mx-auto max-w-2xl px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition">
-              ← Back
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 glass-strong border-b border-border/60">
+        <div className="mx-auto max-w-3xl px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate("/dashboard")}
+              className="h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-secondary transition">
+              <ArrowLeft size={15} />
             </button>
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
+                <Zap size={16} className="text-primary-foreground fill-primary-foreground" />
+              </div>
+              <span className="font-display text-lg font-bold">My Cards</span>
+            </div>
           </div>
-          <button
-            onClick={() => { resetForm(); setShowForm(true); }}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition glow-primary"
-          >
-            <Plus size={15} />
-            Add Card
+          <button onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition">
+            <Plus size={14} /> Add Card
           </button>
         </div>
       </nav>
 
-      {/* ── Body ── */}
-      <div className="mx-auto max-w-2xl px-6 py-10">
+      <div className="mx-auto max-w-3xl px-6 py-10">
 
-        {/* Heading */}
-        <div className="mb-8">
-          <h1 className="font-display text-4xl font-bold tracking-tight">Wallet</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {loading ? '...' : `${cards.length} card${cards.length !== 1 ? 's' : ''}`}
-          </p>
+        {/* Info banner */}
+        <div className="mb-6 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm text-muted-foreground flex items-center gap-3">
+          <CreditCard size={15} className="text-primary shrink-0" />
+          <span>Add your cards here. Balance & rewards data will sync automatically via Plaid — coming soon.</span>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 rounded-xl border border-destructive/40 bg-destructive/10 text-destructive text-sm font-semibold">
-            {error}
-          </div>
-        )}
-
-        {/* ── Stacked wallet cards ── */}
-        {loading ? (
-          <div className="space-y-4">
-            {[0, 1].map((i) => (
-              <div key={i} className="h-48 rounded-3xl bg-secondary/60 animate-pulse" />
-            ))}
-          </div>
-        ) : cards.length === 0 ? (
-          <div className="glass gradient-border rounded-3xl py-20 flex flex-col items-center gap-4">
-            <div className="text-5xl">💳</div>
-            <p className="text-muted-foreground font-semibold">No cards yet</p>
-            <button onClick={() => setShowForm(true)}
-              className="bg-primary text-primary-foreground px-5 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition glow-primary">
-              Add Your First Card
+        {/* Empty state */}
+        {!loading && cards.length === 0 && (
+          <div className="text-center py-24">
+            <div className="w-16 h-16 rounded-2xl bg-secondary border border-border flex items-center justify-center mx-auto mb-5">
+              <CreditCard size={28} className="text-muted-foreground" />
+            </div>
+            <h2 className="font-display text-xl font-bold mb-2">No cards yet</h2>
+            <p className="text-muted-foreground text-sm mb-6">Add your cards to start splitting payments.</p>
+            <button onClick={() => setShowModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition">
+              <Plus size={15} /> Add Your First Card
             </button>
           </div>
-        ) : (
-          <div className="relative mb-10">
-            {/* Stacked cards — each one offset down */}
-            {cards.map((card, i) => {
-              const isExpanded = expandedId === card.id;
-              const stackOffset = isExpanded ? 0 : i * 12;
-              const zIndex = isExpanded ? 50 : cards.length - i;
+        )}
 
-              return (
-                <div
-                  key={card.id}
-                  className="absolute w-full transition-all duration-300 cursor-pointer"
-                  style={{
-                    top: `${i === 0 ? 0 : cards.slice(0, i).reduce((acc, _, j) => acc + (expandedId === cards[j].id ? 260 : 60), 0)}px`,
-                    zIndex,
-                  }}
-                  onClick={() => setExpandedId(isExpanded ? null : card.id)}
-                >
-                  {/* Card face */}
-                  <div
-                    className="w-full rounded-3xl overflow-hidden shadow-2xl"
-                    style={{ backgroundColor: card.color }}
-                  >
-                    {/* Top section — always visible */}
-                    <div className="p-7 pb-5">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <p className="text-xs font-bold tracking-widest text-white/60 uppercase mb-1">
-                            {card.card_type}
-                          </p>
-                          <p className="font-display text-2xl font-bold text-white">{card.name}</p>
-                        </div>
-                        {/* NFC icon */}
-                        <div className="text-white/50 text-xl mt-1">))</div>
-                      </div>
-
-                      {/* Chip + number */}
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="w-10 h-8 rounded-md bg-yellow-400/80 border border-yellow-300/50 flex items-center justify-center">
-                          <div className="w-6 h-5 rounded-sm border border-yellow-600/40 grid grid-cols-2 gap-px p-0.5">
-                            <div className="bg-yellow-600/30 rounded-sm" />
-                            <div className="bg-yellow-600/30 rounded-sm" />
-                            <div className="bg-yellow-600/30 rounded-sm" />
-                            <div className="bg-yellow-600/30 rounded-sm" />
-                          </div>
-                        </div>
-                        <p className="text-white/80 font-mono text-base tracking-widest">
-                          •••• •••• •••• {card.last_four ?? '••••'}
-                        </p>
-                      </div>
-
-                      {/* Available + Rewards */}
-                      <div className="flex justify-between items-end">
-                        <div>
-                          <p className="text-xs font-bold tracking-widest text-white/50 uppercase mb-1">Available</p>
-                          <p className="font-display text-2xl font-bold text-white">
-                            ${card.available.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-bold tracking-widest text-white/50 uppercase mb-1">Rewards</p>
-                          <p className="font-bold text-white text-sm">{bestRewardLabel(card)}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Expand chevron */}
-                    <div className="flex justify-center pb-3">
-                      <ChevronDown
-                        size={18}
-                        className={`text-white/40 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Expanded details */}
-                  {isExpanded && (
-                    <div className="glass gradient-border rounded-b-3xl rounded-t-none border-t-0 px-6 py-5 mt-0">
-                      <div className="grid grid-cols-3 gap-4 mb-5">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Balance</p>
-                          <p className="font-bold">${card.balance.toFixed(0)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Limit</p>
-                          <p className="font-bold">${card.limit.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Base Rate</p>
-                          <p className="font-bold text-primary">{card.rewards_rate * 100}%</p>
-                        </div>
-                      </div>
-
-                      {/* Usage bar */}
-                      <div className="mb-5">
-                        <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                          <span>Credit used</span>
-                          <span>{Math.round((card.balance / card.limit) * 100)}%</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${Math.min((card.balance / card.limit) * 100, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleEdit(card); }}
-                          className="flex-1 flex items-center justify-center gap-2 border border-border bg-secondary/30 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-                        >
-                          <Edit2 size={13} /> Edit
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(card.id); }}
-                          className="flex-1 flex items-center justify-center gap-2 border border-destructive/30 bg-destructive/10 py-2.5 rounded-xl text-sm font-bold text-destructive hover:bg-destructive/20 transition"
-                        >
-                          <Trash2 size={13} /> Delete
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Spacer to push content below the stacked cards */}
-            <div style={{
-              height: `${cards.reduce((acc, card) => {
-                return acc + (expandedId === card.id ? 340 : 60);
-              }, 200)}px`
-            }} />
+        {/* Loading */}
+        {loading && (
+          <div className="flex flex-col gap-3">
+            {[0,1,2].map(i => (
+              <div key={i} className="glass rounded-2xl p-5 animate-pulse">
+                <div className="h-4 w-40 bg-muted rounded mb-3" />
+                <div className="h-3 w-24 bg-muted rounded" />
+              </div>
+            ))}
           </div>
         )}
 
-        {/* ── CSV Import collapsible ── */}
-        <div className="glass gradient-border rounded-2xl overflow-hidden">
-          <button
-            onClick={() => setCsvOpen(!csvOpen)}
-            className="w-full flex items-center justify-between px-6 py-4 hover:bg-secondary/40 transition"
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-secondary/50 border border-border/50 flex items-center justify-center">
-                <Upload size={15} className="text-primary" />
+        {/* Card list */}
+        {!loading && cards.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {cards.map(card => (
+              <div key={card.id} className="glass gradient-border rounded-2xl px-5 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: `${TYPE_COLORS[card.card_type] ?? "#2d6a4f"}20`,
+                      border: `1px solid ${TYPE_COLORS[card.card_type] ?? "#2d6a4f"}40`,
+                    }}
+                  >
+                    <CreditCard size={16} style={{ color: TYPE_COLORS[card.card_type] ?? "#2d6a4f" }} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">{card.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+                      {card.card_type}{card.last_four ? ` •••• ${card.last_four}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => deleteCard(card.id)}
+                  className="text-muted-foreground hover:text-destructive transition p-1.5 rounded-lg hover:bg-destructive/10"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
-              <div className="text-left">
-                <p className="font-semibold text-sm">Import from Bank CSV</p>
-                <p className="text-xs text-muted-foreground">Bulk add cards from your statement</p>
-              </div>
-            </div>
-            <ChevronDown
-              size={16}
-              className={`text-muted-foreground transition-transform duration-300 ${csvOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {csvOpen && (
-            <div className="px-6 pb-6 border-t border-border/40">
-              <div className="pt-4">
-                <CSVUpload onCardCreated={fetchCards} />
-              </div>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Add / Edit Modal ── */}
-      {showForm && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); resetForm(); } }}
-        >
-          <div className="glass-strong gradient-border rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary" />
-            <div className="p-8">
-              <h2 className="font-display text-2xl font-bold mb-6">
-                {editingCard ? 'Edit Card' : 'Add New Card'}
-              </h2>
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Card Name</label>
-                  <input type="text" required value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Chase Sapphire Preferred" className={inputCls} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Card Type</label>
-                    <select value={formData.card_type}
-                      onChange={(e) => setFormData({ ...formData, card_type: e.target.value })}
-                      className={inputCls}>
-                      {['Visa','Mastercard','American Express','Discover'].map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Last 4 Digits</label>
-                    <input type="text" maxLength={4} value={formData.last_four}
-                      onChange={(e) => setFormData({ ...formData, last_four: e.target.value })}
-                      placeholder="1234" className={inputCls} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Credit Limit ($)</label>
-                    <input type="number" required min="0" step="0.01" value={formData.limit}
-                      onChange={(e) => setFormData({ ...formData, limit: Number(e.target.value) })}
-                      className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Current Balance ($)</label>
-                    <input type="number" required min="0" step="0.01" value={formData.balance}
-                      onChange={(e) => setFormData({ ...formData, balance: Number(e.target.value) })}
-                      className={inputCls} />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Base Rewards Rate (%)</label>
-                  <input type="number" required min="0" max="100" step="0.1" value={formData.rewards_rate}
-                    onChange={(e) => setFormData({ ...formData, rewards_rate: Number(e.target.value) })}
-                    className={inputCls} />
-                  <p className="text-xs text-muted-foreground mt-1">e.g., 1.5 for 1.5% cashback</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-3">Category Rewards (%) — Optional</label>
-                  <div className="space-y-2">
-                    {Object.entries(categoryRewards).map(([category, rate]) => (
-                      <div key={category} className="flex items-center gap-3">
-                        <span className="w-36 text-xs font-medium text-muted-foreground">{category}</span>
-                        <input type="number" min="0" max="100" step="0.1" value={rate}
-                          onChange={(e) => setCategoryRewards({ ...categoryRewards, [category]: Number(e.target.value) })}
-                          className="flex-1 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary transition"
-                          placeholder="0" />
-                        <span className="text-xs text-muted-foreground">%</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">💡 Leave at 0 if no category bonuses</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Card Color</label>
-                    <input type="color" value={formData.color}
-                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      className="w-full h-11 rounded-xl border border-border bg-secondary/60 cursor-pointer" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Icon</label>
-                    <input type="text" value={formData.icon}
-                      onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                      placeholder="💳" className={`${inputCls} text-2xl text-center`} />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={loading}
-                    className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:opacity-90 disabled:opacity-50 transition glow-primary">
-                    {loading ? 'Saving...' : editingCard ? 'Update Card' : 'Add Card'}
-                  </button>
-                  <button type="button" onClick={() => { setShowForm(false); resetForm(); }}
-                    className="flex-1 border border-border bg-secondary/30 text-muted-foreground py-3 rounded-xl font-bold hover:bg-secondary hover:text-foreground transition">
-                    Cancel
-                  </button>
-                </div>
-              </form>
+      {/* ── Add Card Modal ── */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
+          <div style={{ width: "100%", maxWidth: 400, background: "#fff", borderRadius: 20, boxShadow: "0 25px 60px rgba(0,0,0,0.3)", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1px solid #f3f4f6" }}>
+              <h2 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>Add Card</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <X size={14} />
+              </button>
             </div>
+            <Elements stripe={stripePromise}>
+              <AddCardForm onSuccess={handleSuccess} onCancel={() => setShowModal(false)} />
+            </Elements>
           </div>
         </div>
       )}

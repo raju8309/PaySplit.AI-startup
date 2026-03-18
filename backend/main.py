@@ -13,6 +13,7 @@ from routes.auth import router as auth_router
 from routes.settlements import router as settlements_router
 from routes.payments import router as payments_router
 from routes.cards import router as cards_router
+from models.virtual_card import VirtualCard, SplitPreference
 
 try:
     from ml.fraud_service import FraudModelXGB
@@ -117,6 +118,7 @@ def on_startup():
         from models.expense import Expense
         from models.payment import Payment
         from models.card import Card
+        from models.virtual_card import VirtualCard, SplitPreference
 
         Base.metadata.create_all(bind=engine)
         logger.info("DB tables ensured.")

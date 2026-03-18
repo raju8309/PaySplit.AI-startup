@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # ── Stripe ────────────────────────────────────────────────────────────────
     STRIPE_SECRET_KEY: Optional[str] = None
     STRIPE_WEBHOOK_SECRET: Optional[str] = None
+    STRIPE_ISSUING_WEBHOOK_SECRET: Optional[str] = None
 
     # ── Plaid ─────────────────────────────────────────────────────────────────
     PLAID_CLIENT_ID: Optional[str] = None

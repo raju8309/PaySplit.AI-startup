@@ -1,10 +1,11 @@
+import os
 # backend/routes/issuing.py
 # PaySplit AI - Stripe Issuing Integration
 # Handles virtual card creation, management, and split webhook
 
 import stripe
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+from dotenv import load_dotenv; load_dotenv(); stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+from dotenv import load_dotenv; load_dotenv(); stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 import os
 import json
 from fastapi import APIRouter, HTTPException, Request, Depends

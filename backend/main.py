@@ -78,6 +78,12 @@ except Exception as e:
     plaid_router = None
     logger.warning(f"Plaid routes disabled (reason: {e})")
 
+try:
+    from routes.webhook_split import router as webhook_split_router
+except Exception as e:
+    webhook_split_router = None
+    logger.warning(f"Webhook split disabled (reason: {e})")
+
 
 # ── Register routers ──────────────────────────────────────────────────────────
 app.include_router(health_router)
@@ -96,6 +102,8 @@ if issuing_router:
     app.include_router(issuing_router)
 if plaid_router:
     app.include_router(plaid_router)
+if webhook_split_router:
+    app.include_router(webhook_split_router)
 
 
 # ── Startup ───────────────────────────────────────────────────────────────────

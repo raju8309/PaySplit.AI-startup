@@ -1,5 +1,5 @@
 # backend/routes/webhook_split.py
-# PaySplit AI - Webhook Split Engine
+# PaySplit AI - Webhook Split Engine (DB-backed)
 
 import os
 import json
@@ -8,6 +8,7 @@ import plaid
 import logging
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, JSONResponse
+from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from plaid.api import plaid_api
 from plaid.model.transfer_authorization_create_request import TransferAuthorizationCreateRequest
@@ -24,10 +25,20 @@ router = APIRouter(prefix="/api/webhook", tags=["Webhook"])
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
-# ── In-memory split store ─────────────────────────────────────────────────────
-_split_preferences: dict = {}
-_plaid_access_tokens: dict = {}
-_plaid_account_ids: dict = {}
+
+# ── DB helper ─────────────────────────────────────────────────────────────────
+def get_db():
+    from db import SessionLocal
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def get_db_session():
+    from db import SessionLocal
+    return SessionLocal()
 
 
 # ── Plaid client ──────────────────────────────────────────────────────────────
@@ -69,11 +80,7 @@ async def charge_real_card_via_plaid(
         decision = auth_response["authorization"]["decision"]
 
         if decision != "approved":
-            return {
-                "success": False,
-                "reason": f"Transfer not approved: {decision}",
-                "authorization_id": authorization_id,
-            }
+            return {"success": False, "reason": f"Transfer not approved: {decision}"}
 
         transfer_req = TransferCreateRequest(
             authorization_id=authorization_id,
@@ -115,20 +122,16 @@ async def stripe_issuing_webhook(request: Request):
     event_type = event.get("type", "")
     logger.info(f"[Webhook] Received: {event_type}")
 
-    # ── Real-time authorization request ───────────────────────────────────────
-    # Stripe requires an EMPTY 200 response to approve in the new API
+    # ── Real-time authorization — empty 200 = approve ─────────────────────────
     if event_type == "issuing_authorization.request":
         auth = event["data"]["object"]
         amount = auth["amount"]
         merchant = auth["merchant_data"]["name"]
         card_id = auth["card"] if isinstance(auth["card"], str) else auth["card"]["id"]
-
         logger.info(f"[Webhook] Auth request: ${amount/100:.2f} at {merchant} on {card_id}")
-
-        # Return empty 200 — this is what Stripe's new API requires to approve
         return Response(status_code=200)
 
-    # ── Authorization created (approved) ──────────────────────────────────────
+    # ── Authorization created — run split engine ───────────────────────────────
     if event_type == "issuing_authorization.created":
         auth = event["data"]["object"]
         amount = auth["amount"]
@@ -137,39 +140,47 @@ async def stripe_issuing_webhook(request: Request):
 
         logger.info(f"[Webhook] Charge approved: ${amount/100:.2f} at {merchant}")
 
-        splits = _split_preferences.get(card_id, [])
+        # Load splits from DB
+        try:
+            from models.virtual_card import SplitPreference
+            db = get_db_session()
+            splits = db.query(SplitPreference).filter(
+                SplitPreference.stripe_card_id == card_id,
+                SplitPreference.is_active == True
+            ).all()
+            db.close()
+        except Exception as e:
+            logger.error(f"[Webhook] DB error loading splits: {e}")
+            splits = []
+
         if not splits:
             logger.warning(f"[Webhook] No splits for card {card_id}")
             return JSONResponse(content={"status": "no_splits_configured"})
 
         split_results = []
         for split in splits:
-            split_amount_cents = int(amount * split["percentage"])
-            card_name = split["card_name"]
+            split_amount_cents = int(amount * split.percentage)
 
-            access_token = _plaid_access_tokens.get(str(split["card_id"]))
-            account_id = _plaid_account_ids.get(str(split["card_id"]))
-
-            if not access_token or not account_id:
-                logger.warning(f"[Webhook] No Plaid token for {card_name} — logging only")
+            if not split.plaid_access_token or not split.plaid_account_id:
+                logger.warning(f"[Webhook] No Plaid token for {split.card_name} — logging only")
                 split_results.append({
-                    "card": card_name,
+                    "card": split.card_name,
                     "amount_cents": split_amount_cents,
                     "status": "plaid_not_linked",
                 })
                 continue
 
             result = await charge_real_card_via_plaid(
-                access_token=access_token,
-                account_id=account_id,
+                access_token=split.plaid_access_token,
+                account_id=split.plaid_account_id,
                 amount_cents=split_amount_cents,
                 description=f"PaySplit-{merchant[:10]}",
             )
 
             split_results.append({
-                "card": card_name,
+                "card": split.card_name,
                 "amount_cents": split_amount_cents,
-                "percentage": split["percentage"],
+                "percentage": split.percentage,
                 **result,
             })
 
@@ -181,7 +192,6 @@ async def stripe_issuing_webhook(request: Request):
             "splits": split_results,
         })
 
-    # ── Transaction settled ───────────────────────────────────────────────────
     if event_type == "issuing_transaction.created":
         txn = event["data"]["object"]
         amount = abs(txn["amount"])
@@ -192,15 +202,42 @@ async def stripe_issuing_webhook(request: Request):
     return JSONResponse(content={"status": "ignored", "type": event_type})
 
 
-# ── Register split preferences ────────────────────────────────────────────────
+# ── Save split preferences to DB ──────────────────────────────────────────────
 @router.post("/register-splits")
 async def register_splits(request: Request):
     data = await request.json()
     card_id = data.get("card_id")
     splits = data.get("splits", [])
-    _split_preferences[card_id] = splits
-    logger.info(f"[Webhook] Registered splits for {card_id}: {splits}")
-    return {"status": "registered", "card_id": card_id}
+
+    try:
+        from models.virtual_card import SplitPreference
+        db = get_db_session()
+
+        # Delete existing splits for this card
+        db.query(SplitPreference).filter(
+            SplitPreference.stripe_card_id == card_id
+        ).delete()
+
+        # Insert new splits
+        for split in splits:
+            sp = SplitPreference(
+                stripe_card_id=card_id,
+                card_id=split["card_id"],
+                card_name=split["card_name"],
+                percentage=split["percentage"],
+                plaid_access_token=split.get("plaid_access_token"),
+                plaid_account_id=split.get("plaid_account_id"),
+            )
+            db.add(sp)
+
+        db.commit()
+        db.close()
+        logger.info(f"[Webhook] Saved splits for {card_id} to DB")
+        return {"status": "saved", "card_id": card_id, "count": len(splits)}
+
+    except Exception as e:
+        logger.error(f"[Webhook] DB save error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Test split simulation ─────────────────────────────────────────────────────
@@ -211,18 +248,29 @@ async def test_split(request: Request):
     amount = data.get("amount_cents", 5000)
     merchant = data.get("merchant", "Test Merchant")
 
-    splits = _split_preferences.get(card_id, [])
+    try:
+        from models.virtual_card import SplitPreference
+        db = get_db_session()
+        splits = db.query(SplitPreference).filter(
+            SplitPreference.stripe_card_id == card_id,
+            SplitPreference.is_active == True
+        ).all()
+        db.close()
+    except Exception as e:
+        return {"error": str(e)}
+
     if not splits:
         return {"error": f"No splits configured for card {card_id}"}
 
     simulation = []
     for split in splits:
-        split_amount = int(amount * split["percentage"])
+        split_amount = int(amount * split.percentage)
         simulation.append({
-            "card": split["card_name"],
-            "percentage": f"{split['percentage']*100:.0f}%",
+            "card": split.card_name,
+            "percentage": f"{split.percentage*100:.0f}%",
             "amount": f"${split_amount/100:.2f}",
             "amount_cents": split_amount,
+            "plaid_linked": bool(split.plaid_access_token and split.plaid_account_id),
         })
 
     return {

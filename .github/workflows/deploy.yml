@@ -7,7 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  # ── Test ────────────────────────────────────────────────────────────────────
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -48,7 +47,6 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
 
-  # ── Build & Push Docker Images ───────────────────────────────────────────────
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest
@@ -68,33 +66,24 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & push backend image
+      - name: Build and push backend image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/paysplit-backend:$IMAGE_TAG \
-                       -t $ECR_REGISTRY/paysplit-backend:latest \
-                       ./backend
+          docker build -t $ECR_REGISTRY/paysplit-backend:$IMAGE_TAG -t $ECR_REGISTRY/paysplit-backend:latest ./backend
           docker push $ECR_REGISTRY/paysplit-backend:$IMAGE_TAG
           docker push $ECR_REGISTRY/paysplit-backend:latest
 
-      - name: Build & push frontend image
+      - name: Build and push frontend image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build \
-            --build-arg VITE_API_BASE_URL="" \
-            --build-arg VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }} \
-            --build-arg VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }} \
-            -t $ECR_REGISTRY/paysplit-frontend:$IMAGE_TAG \
-            -t $ECR_REGISTRY/paysplit-frontend:latest \
-            ./frontend
+          docker build --build-arg VITE_API_BASE_URL="" --build-arg VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }} --build-arg VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }} -t $ECR_REGISTRY/paysplit-frontend:$IMAGE_TAG -t $ECR_REGISTRY/paysplit-frontend:latest ./frontend
           docker push $ECR_REGISTRY/paysplit-frontend:$IMAGE_TAG
           docker push $ECR_REGISTRY/paysplit-frontend:latest
 
-  # ── Deploy to AWS ────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to AWS ECS
     runs-on: ubuntu-latest
@@ -111,27 +100,13 @@ jobs:
           aws-region: us-east-1
 
       - name: Deploy backend to ECS
-        run: |
-          aws ecs update-service \
-            --cluster paysplit-cluster \
-            --service paysplit-backend \
-            --force-new-deployment \
-            --region us-east-1
+        run: aws ecs update-service --cluster paysplit-cluster --service paysplit-backend --force-new-deployment --region us-east-1
 
       - name: Deploy frontend to ECS
-        run: |
-          aws ecs update-service \
-            --cluster paysplit-cluster \
-            --service paysplit-frontend \
-            --force-new-deployment \
-            --region us-east-1
+        run: aws ecs update-service --cluster paysplit-cluster --service paysplit-frontend --force-new-deployment --region us-east-1
 
       - name: Wait for deployment
-        run: |
-          aws ecs wait services-stable \
-            --cluster paysplit-cluster \
-            --services paysplit-backend paysplit-frontend \
-            --region us-east-1
+        run: aws ecs wait services-stable --cluster paysplit-cluster --services paysplit-backend paysplit-frontend --region us-east-1
 
       - name: Notify success
         run: echo "✅ PaySplit AI deployed successfully!"

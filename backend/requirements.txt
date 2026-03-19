@@ -12,3 +12,10 @@ stripe
 httpx
 pytest
 python-multipart
+itsdangerous==2.2.0
+argon2-cffi==23.1.0
+plaid-python
+Authlib==1.6.8
+numpy==2.0.0
+xgboost==3.2.0
+scikit-learn==1.5.0

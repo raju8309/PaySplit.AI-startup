@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PaySplit AI — Split Payments</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { min-height: 100vh; background: #0a0a0a; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+    nav { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 3rem; border-bottom: 1px solid #1a1a1a; }
+    .logo { color: #fff; font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; }
+    .status { display: flex; align-items: center; gap: 0.5rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; animation: pulse 2s infinite; }
+    .status span { color: #10b981; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; }
+    main { flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 4rem 3rem; gap: 4rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .left { flex: 1; }
+    .tag { color: #10b981; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.1em; margin-bottom: 1.5rem; font-family: monospace; }
+    h1 { color: #fff; font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 1.5rem; }
+    h1 span { color: #10b981; }
+    p { color: #666; font-size: 1rem; line-height: 1.7; max-width: 420px; font-family: monospace; }
+    .right { flex: 1; display: flex; justify-content: center; align-items: center; min-height: 340px; }
+    .card-stack { position: relative; width: 300px; height: 200px; }
+    .card { position: absolute; bottom: 0; left: 0; width: 300px; height: 180px; border-radius: 16px; padding: 1.25rem 1.5rem; border: 1px solid #222; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .card-label { font-size: 0.75rem; font-weight: 500; color: #888; }
+    .card-bar { width: 32px; height: 20px; border-radius: 4px; opacity: 0.8; }
+    .card-num { color: #555; font-size: 0.85rem; letter-spacing: 0.15em; margin-top: 3rem; }
+    .paysplit-card { background: linear-gradient(135deg, #064e3b 0%, #10b981 100%) !important; border: 1px solid #10b981 !important; }
+    .paysplit-label { color: #a7f3d0; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+    .paysplit-sub { color: #fff; font-size: 0.7rem; opacity: 0.7; margin-bottom: 4px; }
+    .paysplit-num { color: #fff; font-size: 0.9rem; letter-spacing: 0.15em; font-weight: 500; }
+    footer { padding: 1.5rem 3rem; border-top: 1px solid #1a1a1a; display: flex; justify-content: space-between; }
+    footer span { color: #333; font-size: 0.8rem; font-family: monospace; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @media (max-width: 768px) {
+      main { flex-direction: column; padding: 2rem 1.5rem; }
+      nav { padding: 1rem 1.5rem; }
+      .right { min-height: 260px; }
+      footer { flex-direction: column; gap: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">paysplit.in</div>
+    <div class="status">
+      <div class="dot"></div>
+      <span>BUILDING</span>
+    </div>
+  </nav>
+  <main>
+    <div class="left">
+      <p class="tag">$ coming soon</p>
+      <h1>One checkout,<br><span>many cards.</span></h1>
+      <p>Card declined? Not enough balance? PaySplit splits a single online payment across multiple cards — at checkout, instantly. No more choosing.</p>
+    </div>
+    <div class="right">
+      <div class="card-stack" id="stack"></div>
+    </div>
+  </main>
+  <footer>
+    <span>© 2026 PaySplit AI</span>
+    <span>Built by Anuroop · Raju · Rishikesh</span>
+  </footer>
+  <script>
+    const cards = [
+      { label: "Chase Sapphire", last4: "4829", bg: "#1a1a2e", bar: "#4f46e5" },
+      { label: "Amex Gold",      last4: "3721", bg: "#1a2e1a", bar: "#10b981" },
+      { label: "Citi Double",    last4: "9104", bg: "#2e1a1a", bar: "#ef4444" },
+    ];
+    const stack = document.getElementById("stack");
+    cards.forEach((c, i) => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.id = "card" + i;
+      div.style.background = c.bg;
+      div.style.zIndex = cards.length - i;
+      div.style.opacity = 0;
+      div.style.transform = "translateY(20px)";
+      div.innerHTML = `<div style="display:flex;justify-content:space-between"><span class="card-label">${c.label}</span><div class="card-bar" style="background:${c.bar}"></div></div><div class="card-num">•••• •••• •••• ${c.last4}</div>`;
+      stack.appendChild(div);
+    });
+    const ps = document.createElement("div");
+    ps.className = "card paysplit-card";
+    ps.id = "paysplit";
+    ps.style.zIndex = 10;
+    ps.style.opacity = 0;
+    ps.style.transform = "translateY(30px)";
+    ps.innerHTML = `<div style="display:flex;justify-content:space-between"><span class="paysplit-label">PAYSPLIT</span><span style="font-size:20px">⚡</span></div><div style="margin-top:2.5rem"><div class="paysplit-sub">3 cards · 1 transaction</div><span class="paysplit-num">•••• •••• •••• 0005</span></div>`;
+    stack.appendChild(ps);
+
+    function run() {
+      cards.forEach((_, i) => {
+        const el = document.getElementById("card" + i);
+        el.style.opacity = 0;
+        el.style.transform = "translateY(20px)";
+      });
+      ps.style.opacity = 0;
+      ps.style.transform = "translateY(30px)";
+      cards.forEach((_, i) => {
+        setTimeout(() => {
+          const el = document.getElementById("card" + i);
+          el.style.opacity = 1;
+          el.style.transform = `translateY(${-(i * 52)}px) rotate(${(i-1)*3}deg)`;
+        }, 800 * (i + 1));
+      });
+      setTimeout(() => {
+        cards.forEach((_, i) => {
+          const el = document.getElementById("card" + i);
+          el.style.opacity = 0;
+          el.style.transform = "translateY(0)";
+        });
+        ps.style.opacity = 1;
+        ps.style.transform = "translateY(0)";
+      }, 3200);
+    }
+    run();
+    setInterval(run, 6000);
+  </script>
+</body>
+</html>

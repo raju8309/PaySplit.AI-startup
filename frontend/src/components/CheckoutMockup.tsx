@@ -17,11 +17,10 @@ const CheckoutMockup = () => {
             See It In Action
           </p>
           <h2 className="font-display text-4xl font-bold md:text-5xl">
-            Right Inside Your Checkout
+            Pay Once. Split Automatically.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-            PaySplit injects directly into the payment page. No popups, no redirects
-            — just a seamless split option.
+            Enter your PaySplit card at checkout like any other card. We handle splitting the charge across your real cards behind the scenes.
           </p>
         </motion.div>
 
@@ -31,9 +30,7 @@ const CheckoutMockup = () => {
           viewport={{ once: true }}
           className="mx-auto max-w-2xl"
         >
-          {/* Browser chrome */}
           <div className="overflow-hidden rounded-2xl border border-border shadow-2xl shadow-primary/5">
-            {/* Browser toolbar */}
             <div className="flex items-center gap-3 border-b border-border bg-secondary/80 px-4 py-3">
               <div className="flex gap-1.5">
                 <div className="h-3 w-3 rounded-full bg-destructive/60" />
@@ -47,9 +44,7 @@ const CheckoutMockup = () => {
               <Chrome className="h-4 w-4 text-muted-foreground" />
             </div>
 
-            {/* Checkout page content */}
             <div className="bg-card p-6 md:p-8">
-              {/* Order summary */}
               <div className="mb-6 rounded-lg bg-secondary/50 p-4">
                 <h4 className="mb-3 text-sm font-semibold text-foreground">Order Summary</h4>
                 <div className="space-y-2 text-sm">
@@ -74,7 +69,6 @@ const CheckoutMockup = () => {
                 </div>
               </div>
 
-              {/* Standard payment (greyed out) */}
               <div className="mb-4 rounded-lg border border-border p-4 opacity-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -88,7 +82,6 @@ const CheckoutMockup = () => {
                 </div>
               </div>
 
-              {/* PaySplit injected option - highlighted */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
                 whileInView={{ opacity: 1, scale: 1 }}
@@ -97,7 +90,7 @@ const CheckoutMockup = () => {
                 className="relative rounded-lg border-2 border-primary/50 bg-primary/5 p-4 glow-primary"
               >
                 <div className="absolute -top-3 left-4 rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold text-primary-foreground">
-                  PaySplit AI
+                  PaySplit
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -109,7 +102,7 @@ const CheckoutMockup = () => {
                         Split across 2 cards
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Visa ····4242 ($12.00) + Mastercard ····8888 ($2.47)
+                        Chase ····4829 ($8.68) + Citi ····3721 ($5.79)
                       </p>
                     </div>
                   </div>
@@ -118,15 +111,14 @@ const CheckoutMockup = () => {
 
                 <div className="mt-3 flex items-center gap-2 text-xs text-primary/80">
                   <span className="rounded-full bg-primary/10 px-2 py-0.5">
-                    💰 Saves $0.37 in rewards
+                    ⚡ 60% Chase · 40% Citi
                   </span>
                   <span className="rounded-full bg-primary/10 px-2 py-0.5">
-                    ⚡ AI optimized
+                    Your split · Your rules
                   </span>
                 </div>
               </motion.div>
 
-              {/* Place order button */}
               <div className="mt-6 rounded-lg bg-primary/80 py-3 text-center text-sm font-semibold text-primary-foreground">
                 Place Order — $14.47
               </div>

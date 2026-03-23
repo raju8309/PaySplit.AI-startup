@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Mail, Users } from "lucide-react";
+import { ArrowRight, Check, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,55 +14,34 @@ const WaitlistForm = () => {
     e.preventDefault();
     const trimmed = email.trim();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      toast({
-        title: "Invalid email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid email", description: "Please enter a valid email address.", variant: "destructive" });
       return;
     }
-
     setLoading(true);
     try {
-      // Generate a random temp password for waitlist signups
       const tempPassword = Math.random().toString(36).slice(-10);
-      const name = trimmed.split("@")[0]; // use part before @ as name
-
+      const name = trimmed.split("@")[0];
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email: trimmed, password: tempPassword }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
-        // If already registered, still show success (they're already on the list)
         if (res.status === 400 && data.detail?.includes("already registered")) {
           setSubmitted(true);
-          toast({
-            title: "Already on the list! 🎉",
-            description: "You're already signed up. We'll notify you at launch.",
-          });
+          toast({ title: "Already on the list!", description: "We'll notify you at launch." });
         } else {
           throw new Error(data.detail || "Something went wrong");
         }
       } else {
-        // Save token in case user wants to log in later
         localStorage.setItem("token", data.access_token);
         setSubmitted(true);
-        toast({
-          title: "You're on the list! 🎉",
-          description: "We'll notify you as soon as PaySplit launches.",
-        });
+        toast({ title: "You're on the list!", description: "We'll notify you when PaySplit launches." });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong";
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -71,7 +50,6 @@ const WaitlistForm = () => {
   return (
     <section className="relative py-32">
       <div className="pointer-events-none absolute left-1/4 bottom-0 h-96 w-96 rounded-full bg-primary/5 blur-[150px]" />
-
       <div className="container relative mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -86,8 +64,7 @@ const WaitlistForm = () => {
             Get Early Access
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
-            Be the first to know when PaySplit launches. Early members get
-            lifetime access to the Free tier + 3 months of Pro.
+            We are building PaySplit right now. Drop your email and we will reach out as soon as it is ready.
           </p>
 
           {!submitted ? (
@@ -105,19 +82,12 @@ const WaitlistForm = () => {
                     maxLength={255}
                   />
                 </div>
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={loading}
-                  className="gap-2 whitespace-nowrap"
-                >
-                  {loading ? "Joining..." : "Join Waitlist"}
+                <Button type="submit" size="lg" disabled={loading} className="gap-2 whitespace-nowrap">
+                  {loading ? "Joining..." : "Get Early Access"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                No spam, ever. Unsubscribe anytime.
-              </p>
+              <p className="mt-3 text-xs text-muted-foreground">No spam, ever.</p>
             </form>
           ) : (
             <motion.div
@@ -128,23 +98,12 @@ const WaitlistForm = () => {
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20">
                 <Check className="h-6 w-6 text-primary" />
               </div>
-              <p className="font-display text-lg font-semibold text-foreground">
-                You're on the list!
-              </p>
+              <p className="font-display text-lg font-semibold text-foreground">You're on the list!</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                We'll email you at <span className="text-foreground">{email}</span> when
-                we launch.
+                We'll email you at <span className="text-foreground">{email}</span> when we launch.
               </p>
             </motion.div>
           )}
-
-          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Users className="h-4 w-4 text-primary" />
-            <span>
-              <span className="font-semibold text-foreground">2,847</span> people
-              already on the waitlist
-            </span>
-          </div>
         </motion.div>
       </div>
     </section>

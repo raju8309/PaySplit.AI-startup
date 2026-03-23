@@ -7,64 +7,37 @@ const tiers = [
     name: "Free",
     price: "$0",
     period: "forever",
-    description: "Try PaySplit risk-free",
+    description: "Get started with no commitment",
     features: [
-      "Split across 2 cards",
-      "5 transactions/month",
-      "Basic card recommendation",
+      "One PaySplit virtual card",
+      "Up to 10 splits per month",
+      "Link up to 2 real cards",
+      "Fraud detection on every transaction",
       "Bank-level encryption",
     ],
     cta: "Get Started Free",
     highlight: false,
-    action: "waitlist",
   },
   {
     name: "Pro",
-    price: "0.5%",
-    period: "per transaction",
-    description: "For power users who maximize rewards",
+    price: "$4.99",
+    period: "per month",
+    description: "For people who split every purchase",
     features: [
-      "Unlimited cards",
-      "Unlimited transactions",
-      "AI smart recommendations",
-      "Fraud detection",
-      "Spending forecaster",
+      "Everything in Free",
+      "Unlimited splits",
+      "Link unlimited cards",
+      "Custom split percentages per merchant",
       "Priority support",
-      "Browser extension",
     ],
-    cta: "Start Pro Trial",
+    cta: "Get Started",
     highlight: true,
-    action: "waitlist",
-  },
-  {
-    name: "Business",
-    price: "Custom",
-    period: "volume pricing",
-    description: "For teams and enterprises",
-    features: [
-      "Everything in Pro",
-      "Team management",
-      "API access",
-      "Dedicated account manager",
-      "Custom integrations",
-      "SLA guarantee",
-    ],
-    cta: "Contact Sales",
-    highlight: false,
-    action: "contact",
   },
 ];
 
 const PricingSection = () => {
-  const handleCTA = (action: string) => {
-    if (action === "waitlist") {
-      // Scroll to waitlist form at the bottom
-      document.querySelector(".waitlist-section")?.scrollIntoView({ behavior: "smooth" });
-      // Fallback: scroll to bottom of page
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-    } else if (action === "contact") {
-      window.location.href = "mailto:hello@paysplit.ai?subject=Business Plan Inquiry";
-    }
+  const handleCTA = () => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   };
 
   return (
@@ -82,14 +55,14 @@ const PricingSection = () => {
             Simple Pricing
           </p>
           <h2 className="font-display text-4xl font-bold md:text-5xl">
-            Pay Less Per Split
+            Start Free. Upgrade When You Need To.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-            Just 0.5% per transaction. That's $0.50 on a $100 order — less than a candy bar.
+            No hidden fees. No per-transaction charges. Just a flat monthly plan when you're ready.
           </p>
         </motion.div>
 
-        <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-3">
+        <div className="mx-auto grid max-w-3xl gap-8 md:grid-cols-2">
           {tiers.map((t, i) => (
             <motion.div
               key={t.name}
@@ -126,7 +99,7 @@ const PricingSection = () => {
                 className="mt-8 gap-2"
                 variant={t.highlight ? "default" : "outline"}
                 size="lg"
-                onClick={() => handleCTA(t.action)}
+                onClick={handleCTA}
               >
                 {t.cta}
                 <ArrowRight className="h-4 w-4" />

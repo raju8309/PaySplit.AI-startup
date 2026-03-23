@@ -1,33 +1,33 @@
 import { motion } from "framer-motion";
-import { Brain, Shield, TrendingUp, Sparkles } from "lucide-react";
+import { Brain, Shield, SplitSquareVertical, Sparkles } from "lucide-react";
 
 const features = [
   {
-    icon: Brain,
-    title: "Smart Card Recommendation",
-    description: "XGBoost ML model analyzes merchant category, card rewards, and your spending patterns to suggest the perfect card split for maximum cashback.",
-    tag: "XGBoost",
+    icon: Shield,
+    title: "Real-Time Fraud Detection",
+    description: "Every transaction is scored for fraud risk before it goes through. Unusual patterns are flagged instantly so your money stays safe.",
+    tag: "Live",
     color: "primary" as const,
   },
   {
-    icon: Shield,
-    title: "Real-Time Fraud Detection",
-    description: "Isolation Forest anomaly detection scores every transaction in milliseconds. Unusual patterns trigger 2FA — blocking 99.7% of fraud while approving 99% of legit payments.",
-    tag: "Isolation Forest",
+    icon: Brain,
+    title: "Smart Card Allocation",
+    description: "Tell us your cards and we figure out the best way to split the charge. The more you use PaySplit, the smarter it gets.",
+    tag: "ML Powered",
     color: "accent" as const,
   },
   {
-    icon: TrendingUp,
-    title: "Spending Forecaster",
-    description: "Prophet time-series model predicts your next 30 days of spending. Get proactive alerts when you're about to exceed limits or miss rewards thresholds.",
-    tag: "Prophet",
+    icon: SplitSquareVertical,
+    title: "Automatic Split Engine",
+    description: "When you pay with your PaySplit card, the backend automatically charges each of your real cards their exact portion. No manual steps.",
+    tag: "Core Feature",
     color: "primary" as const,
   },
   {
     icon: Sparkles,
-    title: "Browser Extension",
-    description: "Works natively on DoorDash, Uber Eats, Amazon, and 500+ sites. No extra steps — PaySplit injects seamlessly into every checkout page.",
-    tag: "Chrome Extension",
+    title: "Works Everywhere Online",
+    description: "DoorDash, Amazon, Uber Eats — anywhere that accepts a Visa or Mastercard online accepts your PaySplit card. No special integration needed.",
+    tag: "Universal",
     color: "accent" as const,
   },
 ];
@@ -35,9 +35,7 @@ const features = [
 const AIFeatures = () => {
   return (
     <section id="ai-features" className="relative py-32">
-      {/* Glow */}
       <div className="pointer-events-none absolute left-0 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-primary/5 blur-[150px]" />
-
       <div className="container relative mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -46,14 +44,13 @@ const AIFeatures = () => {
           className="mb-16 text-center"
         >
           <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary">
-            Intelligence Built In
+            Built to Be Smart
           </p>
           <h2 className="font-display text-4xl font-bold md:text-5xl">
-            AI That Saves You Money
+            More Than Just a Card
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-            Three production ML models work together to optimize every payment,
-            detect fraud in real-time, and predict your financial future.
+            PaySplit handles the complexity behind the scenes — fraud detection, split logic, and card routing — so you never have to think about it.
           </p>
         </motion.div>
 

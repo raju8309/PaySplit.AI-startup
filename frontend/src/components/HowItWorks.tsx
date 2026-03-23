@@ -1,29 +1,29 @@
 import { motion } from "framer-motion";
-import { Chrome, SplitSquareVertical, ShoppingCart, CreditCard } from "lucide-react";
+import { CreditCard, Link, SplitSquareVertical, Zap } from "lucide-react";
 
 const steps = [
   {
-    icon: Chrome,
-    title: "Install the Extension",
-    description: "Add PaySplit to Chrome in one click. It runs silently in the background until you hit a checkout page.",
+    icon: CreditCard,
+    title: "Get Your PaySplit Card",
+    description: "Sign up and get a PaySplit virtual card instantly. It works anywhere online — DoorDash, Amazon, Uber, you name it.",
     step: "01",
   },
   {
-    icon: ShoppingCart,
-    title: "Shop & Checkout Normally",
-    description: "Order food on DoorDash, shop on Amazon, book an Uber — when you reach the payment page, PaySplit appears automatically.",
+    icon: Link,
+    title: "Link Your Real Cards",
+    description: "Connect your existing cards inside the PaySplit app. Your Chase card, your Citi card, whatever you have.",
     step: "02",
   },
   {
     icon: SplitSquareVertical,
-    title: "Split Across Your Cards",
-    description: "Choose how to divide the total across 2–5 cards. Our AI suggests the best split to maximize rewards — or set your own amounts.",
+    title: "Set Your Split",
+    description: "Before you pay, choose how the charge splits. 60% on Chase, 40% on Citi. You decide the percentage for each card.",
     step: "03",
   },
   {
-    icon: CreditCard,
-    title: "One-Click Pay",
-    description: "Hit pay once. PaySplit charges each card for its portion and completes the checkout seamlessly. No virtual cards, no workarounds.",
+    icon: Zap,
+    title: "Pay and We Handle the Rest",
+    description: "Checkout with your PaySplit card like normal. We automatically charge each of your real cards their portion in the background.",
     step: "04",
   },
 ];
@@ -49,13 +49,13 @@ const HowItWorks = () => {
           className="mb-16 text-center"
         >
           <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary">
-            Seamless Checkout Experience
+            How It Works
           </p>
           <h2 className="font-display text-4xl font-bold md:text-5xl">
-            Split Any Online Payment in Seconds
+            One Card. Your Rules.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-            PaySplit injects directly into checkout pages. No switching apps, no copy-pasting — just an extra payment option right where you pay.
+            No more picking one card and hoping it has enough balance. Set your split once and pay with confidence every time.
           </p>
         </motion.div>
 

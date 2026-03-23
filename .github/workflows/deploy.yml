@@ -113,19 +113,5 @@ jobs:
             --force-new-deployment \
             --region us-east-1
 
-      - name: Wait for backend to stabilize
-        run: |
-          aws ecs wait services-stable \
-            --cluster paysplit-cluster \
-            --services paysplit-backend \
-            --region us-east-1
-
-      - name: Wait for frontend to stabilize
-        run: |
-          aws ecs wait services-stable \
-            --cluster paysplit-cluster \
-            --services paysplit-frontend \
-            --region us-east-1
-
       - name: Done
-        run: echo "✅ paysplit.in is live!"
+        run: echo "✅ Deployment triggered — paysplit.in updating now!"

@@ -27,7 +27,7 @@ const chapters: Chapter[] = [
     body: [
       "One night, the three of us were sitting together, hungry, trying to order food on DoorDash. We picked everything out, went to checkout — and then it happened. The card declined.",
       "Not because any of us were broke. Between the three of us, we had more than enough. But one card was close to its limit, and DoorDash only accepts one card at a time. So there we were — money in our pockets, hungry, staring at a failed order.",
-      `Rishikesh said it first: "Why can't we just split this across two cards?" None of us had an answer. We started looking into it. The more we looked, the more we realized — nobody had solved this. That's when we decided to stop looking for a solution and start building one.`,
+      `Anuroop said it first: "Why can't we just split this across two cards?" None of us had an answer. We started looking into it. The more we looked, the more we realized — nobody had solved this. That's when we decided to stop looking for a solution and start building one.`,
     ],
     quote: null,
   },

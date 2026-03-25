@@ -97,11 +97,54 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Register new backend task definition with env vars
+        run: |
+          aws ecs register-task-definition \
+            --family paysplit-backend \
+            --network-mode awsvpc \
+            --requires-compatibilities FARGATE \
+            --cpu 512 \
+            --memory 1024 \
+            --execution-role-arn arn:aws:iam::963777256342:role/ecsTaskExecutionRole \
+            --container-definitions "[{
+              \"name\": \"paysplit-backend\",
+              \"image\": \"963777256342.dkr.ecr.us-east-1.amazonaws.com/paysplit-backend:latest\",
+              \"portMappings\": [{\"containerPort\": 8000, \"protocol\": \"tcp\"}],
+              \"essential\": true,
+              \"environment\": [
+                {\"name\": \"SECRET_KEY\", \"value\": \"$SECRET_KEY\"},
+                {\"name\": \"DATABASE_URL\", \"value\": \"sqlite:///./paysplit.db\"},
+                {\"name\": \"STRIPE_SECRET_KEY\", \"value\": \"$STRIPE_SECRET_KEY\"},
+                {\"name\": \"PLAID_CLIENT_ID\", \"value\": \"$PLAID_CLIENT_ID\"},
+                {\"name\": \"PLAID_SECRET\", \"value\": \"$PLAID_SECRET\"},
+                {\"name\": \"PLAID_ENV\", \"value\": \"sandbox\"},
+                {\"name\": \"FRONTEND_URL\", \"value\": \"https://www.paysplit.in\"},
+                {\"name\": \"CORS_ORIGINS\", \"value\": \"https://www.paysplit.in,https://paysplit.in\"},
+                {\"name\": \"GOOGLE_REDIRECT_URI\", \"value\": \"https://www.paysplit.in/auth/callback\"}
+              ],
+              \"logConfiguration\": {
+                \"logDriver\": \"awslogs\",
+                \"options\": {
+                  \"awslogs-group\": \"/ecs/paysplit-backend\",
+                  \"awslogs-region\": \"us-east-1\",
+                  \"awslogs-stream-prefix\": \"ecs\",
+                  \"awslogs-create-group\": \"true\"
+                }
+              }
+            }]" \
+            --region us-east-1
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
+          PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
+
       - name: Deploy backend to ECS
         run: |
           aws ecs update-service \
             --cluster paysplit-cluster \
             --service paysplit-backend \
+            --task-definition paysplit-backend \
             --force-new-deployment \
             --region us-east-1
 

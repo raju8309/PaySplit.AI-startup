@@ -27,6 +27,10 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.APP_NAME, version=settings.VERSION)
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 class CoopMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

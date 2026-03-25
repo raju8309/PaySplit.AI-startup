@@ -18,7 +18,7 @@ type ConfirmResponse = {
 function getApiBase() {
   // Vite env var (recommended): VITE_API_BASE_URL=http://127.0.0.1:8000
   const fromEnv = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
-  return (fromEnv || "http://127.0.0.1:8000").replace(/\/$/, "");
+  return (fromEnv || "").replace(/\/$/, "");
 }
 
 async function postJson<T>(url: string, body: any): Promise<T> {

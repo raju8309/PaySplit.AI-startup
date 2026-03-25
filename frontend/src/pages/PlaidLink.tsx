@@ -5,7 +5,7 @@ import { usePlaidLink } from "react-plaid-link";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ||
-  "http://127.0.0.1:8000";
+  "";
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("access_token");

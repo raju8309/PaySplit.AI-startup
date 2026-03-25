@@ -7,7 +7,7 @@ import {
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ||
-  "http://127.0.0.1:8000";
+  "";
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("access_token");
@@ -266,7 +266,7 @@ export default function VirtualCard() {
             </div>
             <h2 className="font-display text-2xl font-bold mb-3">Get your PaySplit Virtual Card</h2>
             <p className="text-muted-foreground text-sm max-w-md mx-auto mb-8 leading-relaxed">
-              One card number to use everywhere. When you pay, we automatically split the charge across your real cards — maximizing cashback and avoiding limits.
+              One card number to use everywhere. When you pay, we automatically split the charge across your real cards — splitting the charge across your real cards automatically.
             </p>
             {error && (
               <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive mb-6 max-w-sm mx-auto">

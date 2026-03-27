@@ -32,7 +32,7 @@ const cofounders: Cofounder[] = [
     initials: "RV",
     name: "Rishikesh Velpula",
     role: "Co-Founder",
-    focus: "Backend · Payments",
+    focus: "Fullstack · Payments",
     bio: "Drove the payments integration and helped keep the backend solid — making sure every transaction was handled reliably and securely from end to end.",
     photo: "/photos/rishikesh.jpeg",
     linkedin: "https://www.linkedin.com/in/rishikesh-velpula-4097771ba/",

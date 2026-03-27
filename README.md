@@ -17,7 +17,7 @@ We built a system that lets users:
 - Link **multiple real cards**
 - Automatically split payments (e.g., 60% / 40%)
 
-All while the merchant sees **only one transaction**.
+All while the merchant sees **only one transaction**
 
 ---
 

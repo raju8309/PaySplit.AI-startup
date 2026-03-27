@@ -36,7 +36,7 @@ const cofounders: Cofounder[] = [
     bio: "Drove the payments integration and helped keep the backend solid — making sure every transaction was handled reliably and securely from end to end.",
     photo: "/photos/rishikesh.jpeg",
     linkedin: "https://www.linkedin.com/in/rishikesh-velpula-4097771ba/",
-    color: "hsl(28, 85%, 40%)",
+    color: "hsl(0, 5.90%, 3.30%)",
   },
   {
     initials: "AJ",
@@ -46,7 +46,7 @@ const cofounders: Cofounder[] = [
     bio: "Built the machine learning models that make the smart card decisions happen, while contributing across both the backend and frontend wherever the team needed a hand.",
     photo: "/photos/anuroop.jpeg",
     linkedin: "https://www.linkedin.com/in/anuroop-jajoba-4487031a2/",
-    color: "hsl(285, 55%, 42%)",
+    color: "hsl(270, 7.10%, 5.50%)",
   },
 ];
 

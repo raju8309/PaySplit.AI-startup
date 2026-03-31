@@ -113,7 +113,7 @@ jobs:
               \"essential\": true,
               \"environment\": [
                 {\"name\": \"SECRET_KEY\", \"value\": \"$SECRET_KEY\"},
-                {\"name\": \"DATABASE_URL\", \"value\": \"sqlite:///./paysplit.db\"},
+                {\"name\": \"DATABASE_URL\", \"value\": \"$DATABASE_URL\"},
                 {\"name\": \"STRIPE_SECRET_KEY\", \"value\": \"$STRIPE_SECRET_KEY\"},
                 {\"name\": \"PLAID_CLIENT_ID\", \"value\": \"$PLAID_CLIENT_ID\"},
                 {\"name\": \"PLAID_SECRET\", \"value\": \"$PLAID_SECRET\"},
@@ -135,6 +135,7 @@ jobs:
             --region us-east-1
         env:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
           PLAID_SECRET: ${{ secrets.PLAID_SECRET }}

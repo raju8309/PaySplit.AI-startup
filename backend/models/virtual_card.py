@@ -8,7 +8,7 @@ class VirtualCard(Base):
     __tablename__ = "virtual_cards"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    user_id = Column(String, ForeignKey('users.id'), nullable=True)
 
     # Stripe Issuing fields
     stripe_card_id = Column(String, unique=True, nullable=False)       # ic_xxx
@@ -38,7 +38,7 @@ class SplitPreference(Base):
     __tablename__ = "split_preferences"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    user_id = Column(String, ForeignKey('users.id'), nullable=True)
 
     # Which virtual card this split config applies to
     stripe_card_id = Column(String, nullable=False, index=True)        # ic_xxx

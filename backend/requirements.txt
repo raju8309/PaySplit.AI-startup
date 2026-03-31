@@ -19,3 +19,4 @@ Authlib==1.6.8
 numpy==2.0.0
 xgboost==3.2.0
 scikit-learn==1.5.0
+psycopg2-binary==2.9.9

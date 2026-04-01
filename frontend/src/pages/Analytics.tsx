@@ -62,6 +62,43 @@ function StatusTooltip({ active, payload, label }: any) {
   );
 }
 
+
+function TransactionHistory() {
+  const [txns, setTxns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/transactions/history`, { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : { transactions: [] })
+      .then(d => { setTxns(d.transactions || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-sm text-muted-foreground">Loading...</div>;
+  if (txns.length === 0) return (
+    <div className="text-center py-8 text-sm text-muted-foreground">
+      No split transactions yet. Make a purchase with your PaySplit card to see history here.
+    </div>
+  );
+
+  return (
+    <div className="divide-y divide-border/40">
+      {txns.map((t, i) => (
+        <div key={i} className="flex items-center justify-between py-3">
+          <div>
+            <p className="text-sm font-semibold">{t.merchant || "Online Purchase"}</p>
+            <p className="text-xs text-muted-foreground">{t.card_name} · {Math.round(t.percentage * 100)}%</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-bold text-primary">${t.card_amount?.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">of ${t.total_amount?.toFixed(2)}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Analytics() {
   const navigate = useNavigate();
 
@@ -338,7 +375,16 @@ export default function Analytics() {
           </div>
         )}
 
-        {/* ── Fraud status card ── */}
+
+        {/* ── Split Transaction History ── */}
+        <div className="glass rounded-2xl p-6">
+          <h2 className="font-display font-bold text-base mb-4 flex items-center gap-2">
+            <CreditCard size={16} className="text-primary" />
+            Split Transaction History
+          </h2>
+          <TransactionHistory />
+        </div>
+        {/* ── Fraud status card ── */
         <div className={`rounded-2xl border p-6 flex items-start gap-4 ${
           fraudProb === null
             ? "border-border bg-secondary/40"

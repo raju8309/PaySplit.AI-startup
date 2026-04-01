@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 const HeroSection = () => {
   const handleGetStarted = () => {
-    window.location.href = "/dashboard";
+    document.getElementById("waitlist") ? document.getElementById("waitlist").scrollIntoView({behavior:"smooth"}) : window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
   };
 
   return (
@@ -66,7 +66,7 @@ const HeroSection = () => {
               <div className="relative h-64 w-full">
                 {[
                   { label: "Chase Sapphire", last4: "4829", bg: "bg-slate-800", amount: "60%" },
-                  { label: "Amex Gold", last4: "3721", bg: "bg-emerald-900", amount: "40%" },
+                  { label: "Bank of America", last4: "3721", bg: "bg-red-900", amount: "40%" },
                 ].map((card, i) => (
                   <motion.div
                     key={i}

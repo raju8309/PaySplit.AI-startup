@@ -1,9 +1,7 @@
-const green = "hsl(138, 38%, 28%)";
-const greenLight = "hsl(138, 38%, 95%)";
-const cream = "hsl(60, 30%, 96%)";
-const blueLight = "hsl(200, 35%, 95%)";
-const amberLight = "hsl(45, 50%, 94%)";
-const greenDark = "hsl(138, 38%, 14%)";
+import React, { useState, useEffect, useRef } from 'react';
+
+const softPastelBg = "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)"; // Soft green to white gradient mix
+const accentGreen = "#76C043"; // Bright green accent
 
 interface Chapter {
   number: string;
@@ -20,9 +18,9 @@ const chapters: Chapter[] = [
   {
     number: "01",
     label: "Where It Started",
-    bg: cream,
-    accent: "#a07000",
-    emoji: "🍔",
+    bg: "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)",
+    accent: accentGreen,
+    emoji: "",
     title: "A declined card. A stupid idea. A startup.",
     body: [
       "One night, the three of us were sitting together, hungry, trying to order food on DoorDash. We picked everything out, went to checkout — and then it happened. The card declined.",
@@ -34,9 +32,9 @@ const chapters: Chapter[] = [
   {
     number: "02",
     label: "The First Week",
-    bg: greenLight,
-    accent: green,
-    emoji: "💬",
+    bg: "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)",
+    accent: accentGreen,
+    emoji: "",
     title: "We had no roadmap. Just a group chat and a lot of questions.",
     body: [
       "The first week was mostly just talking. Long late-night conversations about what this thing could actually be. Not just 'split the bill' — but something smarter. Something that actually understands your money.",
@@ -48,9 +46,9 @@ const chapters: Chapter[] = [
   {
     number: "03",
     label: "Splitting The Work",
-    bg: blueLight,
-    accent: "#2a7a8c",
-    emoji: "🔨",
+    bg: "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)",
+    accent: accentGreen,
+    emoji: " ",
     title: "Nobody had one fixed lane. We just built.",
     body: [
       "Then we got to work. We split things up naturally — not by a formal plan, just by what made sense. Raju took on the backend and the AI side of things, diving deep into how the system would think, and jumped into the frontend whenever needed.",
@@ -63,9 +61,9 @@ const chapters: Chapter[] = [
   {
     number: "04",
     label: "The Hard Weeks",
-    bg: amberLight,
-    accent: "#a07000",
-    emoji: "🌙",
+    bg: "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)",
+    accent: accentGreen,
+    emoji: "",
     title: "There were weeks where nothing worked.",
     body: [
       "There were weeks where it felt like real progress — features clicking into place, ideas working exactly the way we imagined. And there were other weeks where nothing worked and we weren't sure if we were even going in the right direction.",
@@ -77,9 +75,9 @@ const chapters: Chapter[] = [
   {
     number: "05",
     label: "What We Built",
-    bg: greenLight,
-    accent: green,
-    emoji: "🚀",
+    bg: "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)",
+    accent: accentGreen,
+    emoji: "",
     title: "What started as a $14 order turned into something we're proud of.",
     body: [
       "A product that understands your cards, protects your payments, and makes smarter decisions for you — automatically.",
@@ -90,73 +88,144 @@ const chapters: Chapter[] = [
   },
 ];
 
+const ChapterSection = ({ chapter, idx }: { chapter: Chapter; idx: number }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        background: chapter.bg,
+        borderTop: "1px solid rgba(0,0,0,0.06)",
+        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        padding: "64px 48px",
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "translateY(0)" : "translateY(40px)",
+        transition: "opacity 0.8s ease, transform 0.8s ease",
+      }}
+    >
+      <div style={{ maxWidth: 1100, margin: "0 auto", textAlign: "left" as const }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span style={{ fontSize: 36, fontWeight: 900, color: chapter.accent, opacity: 0.18, letterSpacing: "-0.04em", lineHeight: 1, fontFamily: "'Inter', sans-serif" }}>
+              {chapter.number}
+            </span>
+            <div style={{ width: 1, height: 28, backgroundColor: chapter.accent, opacity: 0.2 }} />
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: chapter.accent, fontFamily: "'Inter', sans-serif" }}>
+              {chapter.label}
+            </span>
+          </div>
+          <span style={{ fontSize: 28 }}>{chapter.emoji}</span>
+        </div>
+
+        <h3 style={{ fontSize: "clamp(20px, 2.2vw, 26px)", fontWeight: 700, letterSpacing: "-0.02em", color: "#1a1a1a", margin: "0 0 24px", lineHeight: 1.25, fontFamily: "'Inter', sans-serif", opacity: isVisible ? 1 : 0, transform: isVisible ? "translateX(0)" : "translateX(-20px)", transition: "opacity 0.8s ease 0.1s, transform 0.8s ease 0.1s" }}>
+          {chapter.title}
+        </h3>
+
+        {chapter.body.map((para, i) => (
+          <p key={i} style={{ fontSize: 15, color: "#4a4a4a", lineHeight: 1.9, margin: "0 0 18px", maxWidth: 860, fontFamily: "'Inter', sans-serif", opacity: isVisible ? 1 : 0, transform: isVisible ? "translateX(0)" : "translateX(-20px)", transition: `opacity 0.8s ease ${0.15 + i * 0.15}s, transform 0.8s ease ${0.15 + i * 0.15}s` }}>
+            {para}
+          </p>
+        ))}
+
+        {chapter.quote && (
+          <div style={{ margin: "28px 0 0", padding: "22px 28px", backgroundColor: "#ffffff", borderLeft: `4px solid ${chapter.accent}`, borderRadius: "0 12px 12px 0", fontSize: 14, fontStyle: "italic", color: "#000000", lineHeight: 1.75, fontFamily: "'Inter', sans-serif", opacity: isVisible ? 1 : 0, transform: isVisible ? "translateY(0)" : "translateY(20px)", transition: "opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s" }}>
+            "{chapter.quote}"
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const BlogSection = () => {
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerVisible, setHeaderVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHeaderVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    if (headerRef.current) {
+      observer.observe(headerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section
       id="blog"
       style={{
         padding: 0,
-        backgroundColor: "hsl(var(--background))",
-        borderTop: "1px solid hsl(var(--border))",
+        background: "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)",
+        borderTop: "1px solid rgba(0,0,0,0.06)",
+        minHeight: "100vh",
       }}
     >
-      <div style={{ padding: "96px 32px 72px", backgroundColor: "hsl(138, 38%, 95%)" }}>
+      {/* Header */}
+      <div
+        ref={headerRef}
+        style={{
+          padding: "96px 32px 72px",
+          background: "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)",
+          opacity: headerVisible ? 1 : 0,
+          transform: headerVisible ? "translateY(0)" : "translateY(40px)",
+          transition: "opacity 0.8s ease, transform 0.8s ease",
+        }}
+      >
         <div style={{ maxWidth: 1100, margin: 0 }}>
           <div style={{ textAlign: "left" }}>
-          <h2 style={{ fontSize: "clamp(32px, 4vw, 52px)", fontWeight: 800, letterSpacing: "-0.03em", color: "hsl(var(--foreground))", margin: "0 0 14px", lineHeight: 1.1 }}>
-            How PaySplit.AI was born
-          </h2>
-          <p style={{ fontSize: 15, color: "hsl(var(--muted-foreground))", margin: 0, lineHeight: 1.8, maxWidth: 820 }}>
-            A behind-the-scenes look at how a declined DoorDash order turned into PaySplit.AI.
-          </p>
+            <h2 style={{ fontSize: "clamp(32px, 4vw, 52px)", fontWeight: 800, letterSpacing: "-0.03em", color: "#1a1a1a", margin: "0 0 14px", lineHeight: 1.1, fontFamily: "'Inter', sans-serif", opacity: headerVisible ? 1 : 0, transform: headerVisible ? "translateX(0)" : "translateX(-20px)", transition: "opacity 0.8s ease 0.1s, transform 0.8s ease 0.1s" }}>
+              How PaySplit.AI was born
+            </h2>
+            <p style={{ fontSize: 15, color: "#5a5a5a", margin: 0, lineHeight: 1.8, maxWidth: 820, fontFamily: "'Inter', sans-serif", opacity: headerVisible ? 1 : 0, transform: headerVisible ? "translateX(0)" : "translateX(-20px)", transition: "opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s" }}>
+              A behind-the-scenes look at how a declined DoorDash order turned into PaySplit.AI.
+            </p>
           </div>
         </div>
       </div>
 
+      {/* Chapters */}
       <div>
         {chapters.map((ch, idx) => (
-          <div
-            key={ch.number}
-            style={{
-              backgroundColor: ch.bg,
-              borderTop: idx === 0 ? "1px solid rgba(0,0,0,0.06)" : "none",
-              borderBottom: "1px solid rgba(0,0,0,0.06)",
-              padding: "64px 48px",
-            }}
-          >
-            <div style={{ maxWidth: 1100, margin: "0 auto", textAlign: "left" as const }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, marginBottom: 18 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <span style={{ fontSize: 36, fontWeight: 900, color: ch.accent, opacity: 0.18, letterSpacing: "-0.04em", lineHeight: 1 }}>
-                    {ch.number}
-                  </span>
-                  <div style={{ width: 1, height: 28, backgroundColor: ch.accent, opacity: 0.2 }} />
-                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: ch.accent }}>
-                    {ch.label}
-                  </span>
-                </div>
-                <span style={{ fontSize: 28 }}>{ch.emoji}</span>
-              </div>
-
-              <h3 style={{ fontSize: "clamp(20px, 2.2vw, 26px)", fontWeight: 700, letterSpacing: "-0.02em", color: "#1a1a1a", margin: "0 0 24px", lineHeight: 1.25 }}>
-                {ch.title}
-              </h3>
-
-              {ch.body.map((para, i) => (
-                <p key={i} style={{ fontSize: 15, color: "#4a4a4a", lineHeight: 1.9, margin: "0 0 18px", maxWidth: 860 }}>
-                  {para}
-                </p>
-              ))}
-
-              {ch.quote && (
-                <div style={{ margin: "28px 0 0", padding: "22px 28px", backgroundColor: "#fff", borderLeft: `4px solid ${ch.accent}`, borderRadius: "0 12px 12px 0", fontSize: 15, fontStyle: "italic", color: "#333", lineHeight: 1.75 }}>
-                  "{ch.quote}"
-                </div>
-              )}
-            </div>
-          </div>
+          <ChapterSection key={ch.number} chapter={ch} idx={idx} />
         ))}
+      </div>
 
+      {/* Footer */}
+      <div style={{ padding: "72px 32px", background: "linear-gradient(135deg, #E8F5E9 0%, #F0F7F0 50%, #FFFFFF 100%)" }}>
+        <div style={{ maxWidth: 1100, margin: 0, textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: "#5a5a5a", margin: 0, fontFamily: "'Inter', sans-serif" }}>
+            © PaySplit.AI. All rights reserved.
+          </p>
+        </div>
       </div>
     </section>
   );

@@ -6,3 +6,5 @@ from models.user import User
 from models.group import Group
 from models.expense import Expense
 from models.card import Card
+from models.split_transaction import SplitTransaction
+from models.virtual_card import VirtualCard, SplitPreference

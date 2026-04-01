@@ -21,6 +21,7 @@ except Exception:
     FraudModelXGB = None
 
 from routes.analytics import router as analytics_router
+from routes.transactions import router as transactions_router
 from routes.reports import router as reports_router
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ app.include_router(settlements_router)
 app.include_router(payments_router)
 app.include_router(cards_router)
 app.include_router(analytics_router)
+app.include_router(transactions_router)
 app.include_router(reports_router)
 
 if ml_router:

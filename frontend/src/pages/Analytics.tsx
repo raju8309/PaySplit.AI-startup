@@ -384,7 +384,7 @@ export default function Analytics() {
           </h2>
           <TransactionHistory />
         </div>
-        {/* ── Fraud status card ── */
+        {/* ── Fraud status card ── */}
         <div className={`rounded-2xl border p-6 flex items-start gap-4 ${
           fraudProb === null
             ? "border-border bg-secondary/40"

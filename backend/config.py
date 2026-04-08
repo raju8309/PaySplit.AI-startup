@@ -1,5 +1,8 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import Optional, List
+
+_INSECURE_DEFAULT_KEY = "your-secret-key-change-this-in-production"
 
 
 class Settings(BaseSettings):
@@ -10,9 +13,24 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./paysplit.db"
 
     # ── JWT ───────────────────────────────────────────────────────────────────
-    SECRET_KEY: str = "your-secret-key-change-this-in-production"
+    # REQUIRED: set a strong random SECRET_KEY in your .env file.
+    # Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+    SECRET_KEY: str = _INSECURE_DEFAULT_KEY
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    # Reduced from 1440 (24h) to 60 minutes — use refresh tokens for longer sessions.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def secret_key_must_be_set(cls, v: str) -> str:
+        if v == _INSECURE_DEFAULT_KEY:
+            import os
+            if os.getenv("ENVIRONMENT", "development") == "production":
+                raise ValueError(
+                    "SECRET_KEY must be set to a strong random value in production. "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+                )
+        return v
 
     # ── Google OAuth ──────────────────────────────────────────────────────────
     GOOGLE_CLIENT_ID: Optional[str] = None

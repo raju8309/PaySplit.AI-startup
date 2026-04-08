@@ -33,8 +33,13 @@ def get_plaid_client():
     api_client = plaid.ApiClient(configuration)
     return plaid_api.PlaidApi(api_client)
 
-# ── In-memory store (use DB in production) ────────────────────────────────────
-# Maps user_id -> access_token
+# ── In-memory store ───────────────────────────────────────────────────────────
+# TODO (SECURITY): Plaid access_tokens grant full bank account access and must
+# NOT be stored in memory. They are lost on restart and shared across instances.
+# Replace this with an encrypted DB column on the User model:
+#   User.plaid_access_token = Column(EncryptedString, nullable=True)
+# Use a library like sqlalchemy-utils EncryptedType with AES and a secret key.
+# Maps user_id -> access_token (TEMPORARY — development only)
 _access_tokens: dict = {}
 
 # ── Models ────────────────────────────────────────────────────────────────────

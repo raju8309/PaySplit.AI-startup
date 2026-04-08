@@ -16,7 +16,7 @@ class BankCSVParser:
         for row in reader:
             try:
                 amount = float(row.get('Amount', '0').replace('$', '').replace(',', ''))
-                
+
                 transaction = {
                     'date': row.get('Transaction Date', ''),
                     'description': row.get('Description', ''),
@@ -24,12 +24,13 @@ class BankCSVParser:
                     'amount': abs(amount),
                     'type': 'debit' if amount < 0 else 'credit'
                 }
-                
+
                 if amount < 0:
                     total_spent += abs(amount)
-                
+
                 transactions.append(transaction)
-            except:
+            except (ValueError, KeyError, AttributeError):
+                # Skip rows with unparseable amounts or missing fields.
                 continue
         
         return {
@@ -76,9 +77,10 @@ class BankCSVParser:
                     total_spent += abs(amount)
                 
                 transactions.append(transaction)
-            except:
+            except (ValueError, KeyError, AttributeError):
+                # Skip rows with unparseable amounts or missing fields.
                 continue
-        
+
         return {
             'name': 'Imported Card',
             'card_type': 'Unknown',

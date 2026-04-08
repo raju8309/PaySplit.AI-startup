@@ -1,17 +1,19 @@
-import os
 # backend/routes/issuing.py
 # PaySplit AI - Stripe Issuing Integration
 # Handles virtual card creation, management, and split webhook
 
-import stripe
-from dotenv import load_dotenv; load_dotenv(); stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
-from dotenv import load_dotenv; load_dotenv(); stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 import os
 import json
+import stripe
 from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.orm import Session
+from config import settings
+
+# Set Stripe key once at import time (not per-request).
+if settings.STRIPE_SECRET_KEY:
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
 router = APIRouter(prefix="/api/issuing", tags=["Issuing"])
 

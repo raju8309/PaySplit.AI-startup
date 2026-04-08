@@ -12,6 +12,11 @@ def assert_conservation(balances: dict):
     assert sum(balances.values()) == 0
 
 
+def tx(from_: str, to: str, amount: int) -> dict:
+    """Helper to build the expected transaction dict returned by minimize_transactions."""
+    return {"from": from_, "to": to, "amount_cents": amount}
+
+
 # -------------------------
 # Equal Split Tests
 # -------------------------
@@ -32,7 +37,7 @@ def test_equal_split_two_people_one_expense():
     assert balances["Bob"] == -cents(50)
 
     txs = minimize_transactions(balances)
-    assert txs == [("Bob", "Alice", cents(50))]
+    assert txs == [tx("Bob", "Alice", cents(50))]
 
 
 def test_equal_split_three_people_one_expense():
@@ -70,7 +75,7 @@ def test_equal_split_multiple_expenses_group_total():
     assert balances["Charlie"] == -cents(60)
 
     txs = minimize_transactions(balances)
-    assert txs == [("Charlie", "Alice", cents(60))]
+    assert txs == [tx("Charlie", "Alice", cents(60))]
 
 
 def test_equal_split_rounding_case_10_split_3():
@@ -116,7 +121,7 @@ def test_custom_split_simple():
     assert balances["Bob"] == -cents(70)
 
     txs = minimize_transactions(balances)
-    assert txs == [("Bob", "Alice", cents(70))]
+    assert txs == [tx("Bob", "Alice", cents(70))]
 
 
 # -------------------------
@@ -143,7 +148,7 @@ def test_percentage_split_50_50():
     assert balances["Bob"] == -cents(50)
 
     txs = minimize_transactions(balances)
-    assert txs == [("Bob", "Alice", cents(50))]
+    assert txs == [tx("Bob", "Alice", cents(50))]
 
 
 def test_percentage_split_rounding_remainder():
@@ -179,12 +184,12 @@ def test_minimize_transactions_basic():
     balances = {"A": 5000, "B": -2000, "C": -3000}
     txs = minimize_transactions(balances)
 
-    assert ("B", "A", 2000) in txs
-    assert ("C", "A", 3000) in txs
-    assert all(amt > 0 for _, _, amt in txs)
+    assert tx("B", "A", 2000) in txs
+    assert tx("C", "A", 3000) in txs
+    assert all(t["amount_cents"] > 0 for t in txs)
 
 
 def test_minimize_transactions_conservation():
     balances = {"A": 1000, "B": -1000}
     txs = minimize_transactions(balances)
-    assert txs == [("B", "A", 1000)]
+    assert txs == [tx("B", "A", 1000)]

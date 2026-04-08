@@ -311,7 +311,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
 
         jwt_token = create_access_token(str(user.id))
 
-        frontend_base = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
+        frontend_base = settings.FRONTEND_URL
         frontend_url = f"{frontend_base}/oauth/callback?access_token={jwt_token}"
 
         return RedirectResponse(url=frontend_url)

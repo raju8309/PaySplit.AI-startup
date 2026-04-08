@@ -7,6 +7,12 @@ import stripe
 from db import get_db
 from config import settings
 from models.payment import Payment
+from models.user import User
+from routes.auth import get_current_user
+
+# Set Stripe API key once at module load, not per-request.
+if settings.STRIPE_SECRET_KEY:
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 
@@ -31,8 +37,6 @@ class CheckoutResponse(BaseModel):
 def create_checkout_session(payload: CheckoutRequest, db: Session = Depends(get_db)):
     if not settings.STRIPE_SECRET_KEY:
         raise HTTPException(status_code=500, detail="STRIPE_SECRET_KEY not set in .env")
-
-    stripe.api_key = settings.STRIPE_SECRET_KEY
 
     try:
         payment = Payment(
@@ -117,8 +121,6 @@ def create_split_checkout(payload: SplitCheckoutRequest, db: Session = Depends(g
     if len(payload.cards) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 cards for a split")
 
-    stripe.api_key = settings.STRIPE_SECRET_KEY
-
     try:
         # 1) Create all Payment DB records first so we have their IDs
         payments = []
@@ -202,11 +204,9 @@ def create_split_checkout(payload: SplitCheckoutRequest, db: Session = Depends(g
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── Webhook (unchanged) ────────────────────────────────────────────────────────
+# ── Webhook ────────────────────────────────────────────────────────────────────
 @router.post("/webhook")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
-    if not settings.STRIPE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="STRIPE_SECRET_KEY not set in .env")
     if not settings.STRIPE_WEBHOOK_SECRET:
         raise HTTPException(status_code=500, detail="STRIPE_WEBHOOK_SECRET not set in .env")
 
@@ -242,10 +242,17 @@ class ConfirmRequest(BaseModel):
 
 
 @router.post("/confirm")
-def confirm_payment_demo(req: ConfirmRequest, db: Session = Depends(get_db)):
+def confirm_payment_demo(
+    req: ConfirmRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Confirm a pending payment (authenticated). Only the originating user may confirm."""
     payment = db.query(Payment).filter(Payment.id == req.payment_id).first()
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
+    if payment.from_user != str(current_user.id) and payment.from_user != current_user.email:
+        raise HTTPException(status_code=403, detail="Not authorised to confirm this payment")
     payment.status = "paid"
     db.commit()
     return {"ok": True, "payment_id": payment.id, "status": payment.status}

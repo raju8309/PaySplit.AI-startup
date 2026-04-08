@@ -205,6 +205,15 @@ async def stripe_issuing_webhook(request: Request):
 # ── Save split preferences to DB ──────────────────────────────────────────────
 @router.post("/register-splits")
 async def register_splits(request: Request):
+    # Verify the caller is authenticated via Bearer token.
+    authorization = request.headers.get("Authorization", "")
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    from routes.auth import decode_token
+    from models.user import User
+    token = authorization.split(" ")[1]
+    decode_token(token)  # raises 401 if expired or invalid
+
     data = await request.json()
     card_id = data.get("card_id")
     splits = data.get("splits", [])

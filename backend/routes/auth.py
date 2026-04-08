@@ -209,13 +209,11 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
         "expires": datetime.utcnow() + timedelta(minutes=15),
     }
 
-    # In production: send email with reset link
-    # For now: return token directly (dev mode)
-    return {
-        "message": "Password reset token generated.",
-        "reset_token": token,  # Remove this in production!
-        "expires_in": "15 minutes",
-    }
+    # TODO: Send reset link via email (e.g. SendGrid / SES):
+    #   send_email(user.email, subject="Reset your password",
+    #              body=f"Use this link: {FRONTEND_URL}/reset-password?token={token}")
+    # The token is intentionally NOT returned in the response to prevent exposure.
+    return {"message": "If that email exists, a reset link has been sent."}
 
 
 # ── NEW: Reset Password ───────────────────────────────────────────────────
@@ -231,8 +229,8 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
         del reset_tokens[req.token]
         raise HTTPException(status_code=400, detail="Reset token has expired")
 
-    if len(req.new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if len(req.new_password) < 10:
+        raise HTTPException(status_code=400, detail="Password must be at least 10 characters")
 
     user = db.query(User).filter(User.id == token_data["user_id"]).first()
     if not user:
@@ -258,8 +256,8 @@ def change_password(
     if not verify_password(req.current_password, current_user.password_hash):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
 
-    if len(req.new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if len(req.new_password) < 10:
+        raise HTTPException(status_code=400, detail="Password must be at least 10 characters")
 
     current_user.password_hash = hash_password(req.new_password)
     db.commit()

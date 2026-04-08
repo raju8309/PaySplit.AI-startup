@@ -35,6 +35,10 @@ const WaitlistForm = () => {
           throw new Error(data.detail || "Something went wrong");
         }
       } else {
+        // TODO (SECURITY): Storing JWTs in localStorage is vulnerable to XSS.
+        // Before launch, move to httpOnly cookies:
+        //   Backend: set Set-Cookie: token=...; HttpOnly; Secure; SameSite=Strict
+        //   Frontend: remove this line and rely on cookies automatically sent with requests.
         localStorage.setItem("token", data.access_token);
         setSubmitted(true);
         toast({ title: "You're on the list!", description: "We'll notify you when PaySplit launches." });

@@ -128,6 +128,16 @@ def on_startup():
 
         Base.metadata.create_all(bind=engine)
         logger.info("DB tables ensured.")
+
+        # ── Incremental migrations (safe to run on every startup) ──────────────
+        with engine.connect() as conn:
+            conn.execute(
+                __import__("sqlalchemy").text(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR UNIQUE"
+                )
+            )
+            conn.commit()
+        logger.info("Migrations applied.")
     except Exception as e:
         logger.warning(f"DB not ready. Error: {e}")
 

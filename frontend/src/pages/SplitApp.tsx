@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Zap, Sparkles, ShieldCheck } from "lucide-react";
 import { recommendSplit, createCheckout } from "../services/paySplitService";
 
+const API_BASE =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
+
 type Card = {
   id: number;
   name: string;
@@ -49,7 +52,7 @@ export default function SplitApp() {
     const fetch_ = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const res = await fetch("http://localhost:8000/api/cards/", {
+        const res = await fetch(`${API_BASE}/api/cards/`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {

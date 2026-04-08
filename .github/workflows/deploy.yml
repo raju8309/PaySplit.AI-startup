@@ -122,7 +122,7 @@ jobs:
                 {\"name\": \"PLAID_ENV\", \"value\": \"sandbox\"},
                 {\"name\": \"FRONTEND_URL\", \"value\": \"https://www.paysplit.in\"},
                 {\"name\": \"CORS_ORIGINS\", \"value\": \"https://www.paysplit.in,https://paysplit.in\"},
-                {\"name\": \"GOOGLE_REDIRECT_URI\", \"value\": \"https://www.paysplit.in/auth/callback\"}
+                {\"name\": \"GOOGLE_REDIRECT_URI\", \"value\": \"https://www.paysplit.in/api/auth/google/callback\"}
               ],
               \"logConfiguration\": {
                 \"logDriver\": \"awslogs\",

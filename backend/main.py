@@ -13,6 +13,7 @@ from routes.auth import router as auth_router
 from routes.settlements import router as settlements_router
 from routes.payments import router as payments_router
 from routes.cards import router as cards_router
+from routes.multi_person_splits import router as multi_person_router  # ← NEW LINE
 from models.virtual_card import VirtualCard, SplitPreference
 
 try:
@@ -97,6 +98,7 @@ app.include_router(auth_router)
 app.include_router(settlements_router)
 app.include_router(payments_router)
 app.include_router(cards_router)
+app.include_router(multi_person_router)  # ← NEW LINE
 app.include_router(analytics_router)
 app.include_router(transactions_router)
 app.include_router(reports_router)
@@ -125,6 +127,7 @@ def on_startup():
         from models.payment import Payment
         from models.card import Card
         from models.virtual_card import VirtualCard, SplitPreference
+        from models.split_transaction import SplitTransaction, SplitParticipant, SplitInvitation  # ← NEW LINE
 
         Base.metadata.create_all(bind=engine)
         logger.info("DB tables ensured.")

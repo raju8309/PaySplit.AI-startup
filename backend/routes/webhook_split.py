@@ -1,5 +1,5 @@
 # backend/routes/webhook_split.py
-# PaySplit AI - Webhook Split Engine (DB-backed)
+# PaySplit AI - Webhook Split Engine (DB-backed) - UPDATED FOR MULTI-PERSON SPLITS
 
 import os
 import json
@@ -17,6 +17,7 @@ from plaid.model.transfer_type import TransferType
 from plaid.model.transfer_network import TransferNetwork
 from plaid.model.ach_class import ACHClass
 from plaid.model.transfer_user_in_request import TransferUserInRequest
+from datetime import datetime
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -131,7 +132,7 @@ async def stripe_issuing_webhook(request: Request):
         logger.info(f"[Webhook] Auth request: ${amount/100:.2f} at {merchant} on {card_id}")
         return Response(status_code=200)
 
-    # ── Authorization created — run split engine ───────────────────────────────
+    # ── Authorization created — run split engine (UPDATED FOR MULTI-PERSON) ────
     if event_type == "issuing_authorization.created":
         auth = event["data"]["object"]
         amount = auth["amount"]
@@ -140,57 +141,155 @@ async def stripe_issuing_webhook(request: Request):
 
         logger.info(f"[Webhook] Charge approved: ${amount/100:.2f} at {merchant}")
 
-        # Load splits from DB
         try:
-            from models.virtual_card import SplitPreference
             db = get_db_session()
-            splits = db.query(SplitPreference).filter(
-                SplitPreference.stripe_card_id == card_id,
-                SplitPreference.is_active == True
-            ).all()
-            db.close()
-        except Exception as e:
-            logger.error(f"[Webhook] DB error loading splits: {e}")
-            splits = []
+            
+            # ── CHECK FOR MULTI-PERSON SPLIT ──────────────────────────────────
+            from models.split_transaction import SplitTransaction, SplitParticipant
+            
+            # Look up SplitTransaction with split_type = "multi_person"
+            split_txn = db.query(SplitTransaction).filter(
+                SplitTransaction.stripe_card_id == card_id,
+                SplitTransaction.status == "pending",
+                SplitTransaction.split_type == "multi_person"
+            ).first()
 
-        if not splits:
-            logger.warning(f"[Webhook] No splits for card {card_id}")
-            return JSONResponse(content={"status": "no_splits_configured"})
+            if split_txn:
+                # ── MULTI-PERSON SPLIT HANDLER ────────────────────────────────
+                logger.info(f"[Webhook] Multi-person split detected: {split_txn.id}")
+                
+                # Get all approved participants
+                participants = db.query(SplitParticipant).filter(
+                    SplitParticipant.split_transaction_id == split_txn.id,
+                    SplitParticipant.status == "approved"
+                ).all()
 
-        split_results = []
-        for split in splits:
-            split_amount_cents = int(amount * split.percentage)
+                if not participants:
+                    logger.warning(f"[Webhook] No approved participants for {split_txn.id}")
+                    db.close()
+                    return JSONResponse(
+                        content={"status": "error", "detail": "No approved participants"},
+                        status_code=400
+                    )
 
-            if not split.plaid_access_token or not split.plaid_account_id:
-                logger.warning(f"[Webhook] No Plaid token for {split.card_name} — logging only")
-                split_results.append({
-                    "card": split.card_name,
-                    "amount_cents": split_amount_cents,
-                    "status": "plaid_not_linked",
+                split_results = []
+                all_charged = True
+
+                # Charge each participant's card
+                for participant in participants:
+                    amount_to_charge = int(participant.amount_cents)
+
+                    if not participant.plaid_access_token or not participant.plaid_account_id:
+                        logger.warning(f"[Webhook] No Plaid credentials for {participant.id}")
+                        participant.status = "failed"
+                        split_results.append({
+                            "user_id": participant.user_id,
+                            "amount_cents": amount_to_charge,
+                            "status": "failed",
+                            "reason": "plaid_missing"
+                        })
+                        all_charged = False
+                        continue
+
+                    # Charge via Plaid ACH
+                    result = await charge_real_card_via_plaid(
+                        access_token=participant.plaid_access_token,
+                        account_id=participant.plaid_account_id,
+                        amount_cents=amount_to_charge,
+                        description=f"PaySplit-{merchant[:10]}",
+                        user_name=f"User-{participant.user_id[:8]}"
+                    )
+
+                    if result["success"]:
+                        participant.status = "charged"
+                        participant.charged_at = datetime.utcnow()
+                        participant.plaid_transfer_id = result.get("transfer_id")
+                        
+                        split_results.append({
+                            "user_id": participant.user_id,
+                            "amount_cents": amount_to_charge,
+                            "percentage": f"{participant.percentage * 100:.1f}%",
+                            "status": "charged",
+                            "transfer_id": result.get("transfer_id")
+                        })
+                        logger.info(f"[Webhook] Charged {participant.user_id}: ${amount_to_charge/100:.2f}")
+                    else:
+                        participant.status = "failed"
+                        split_results.append({
+                            "user_id": participant.user_id,
+                            "amount_cents": amount_to_charge,
+                            "status": "failed",
+                            "reason": result.get("reason")
+                        })
+                        all_charged = False
+                        logger.warning(f"[Webhook] Failed to charge {participant.user_id}: {result.get('reason')}")
+
+                # Update split transaction
+                split_txn.status = "completed" if all_charged else "partial"
+                db.commit()
+                db.close()
+
+                return JSONResponse(content={
+                    "status": "multi_person_split_executed",
+                    "split_id": split_txn.id,
+                    "total_cents": amount,
+                    "merchant": merchant,
+                    "all_charged": all_charged,
+                    "splits": split_results
                 })
-                continue
 
-            result = await charge_real_card_via_plaid(
-                access_token=split.plaid_access_token,
-                account_id=split.plaid_account_id,
-                amount_cents=split_amount_cents,
-                description=f"PaySplit-{merchant[:10]}",
-            )
+            # ── SINGLE-USER SPLIT HANDLER (ORIGINAL) ──────────────────────────
+            else:
+                from models.virtual_card import SplitPreference
+                
+                splits = db.query(SplitPreference).filter(
+                    SplitPreference.stripe_card_id == card_id,
+                    SplitPreference.is_active == True
+                ).all()
+                db.close()
 
-            split_results.append({
-                "card": split.card_name,
-                "amount_cents": split_amount_cents,
-                "percentage": split.percentage,
-                **result,
-            })
+                if not splits:
+                    logger.warning(f"[Webhook] No splits for card {card_id}")
+                    return JSONResponse(content={"status": "no_splits_configured"})
 
-        logger.info(f"[Webhook] Splits: {split_results}")
-        return JSONResponse(content={
-            "status": "splits_executed",
-            "total_cents": amount,
-            "merchant": merchant,
-            "splits": split_results,
-        })
+                split_results = []
+                for split in splits:
+                    split_amount_cents = int(amount * split.percentage)
+
+                    if not split.plaid_access_token or not split.plaid_account_id:
+                        logger.warning(f"[Webhook] No Plaid token for {split.card_name} — logging only")
+                        split_results.append({
+                            "card": split.card_name,
+                            "amount_cents": split_amount_cents,
+                            "status": "plaid_not_linked",
+                        })
+                        continue
+
+                    result = await charge_real_card_via_plaid(
+                        access_token=split.plaid_access_token,
+                        account_id=split.plaid_account_id,
+                        amount_cents=split_amount_cents,
+                        description=f"PaySplit-{merchant[:10]}",
+                    )
+
+                    split_results.append({
+                        "card": split.card_name,
+                        "amount_cents": split_amount_cents,
+                        "percentage": split.percentage,
+                        **result,
+                    })
+
+                logger.info(f"[Webhook] Splits: {split_results}")
+                return JSONResponse(content={
+                    "status": "splits_executed",
+                    "total_cents": amount,
+                    "merchant": merchant,
+                    "splits": split_results,
+                })
+
+        except Exception as e:
+            logger.error(f"[Webhook] Error processing split: {e}", exc_info=True)
+            return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
 
     if event_type == "issuing_transaction.created":
         txn = event["data"]["object"]

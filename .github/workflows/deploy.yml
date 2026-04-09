@@ -108,6 +108,7 @@ jobs:
             --cpu 512 \
             --memory 1024 \
             --execution-role-arn arn:aws:iam::963777256342:role/ecsTaskExecutionRole \
+            --task-role-arn arn:aws:iam::963777256342:role/ecsTaskExecutionRole \
             --container-definitions "[{
               \"name\": \"paysplit-backend\",
               \"image\": \"963777256342.dkr.ecr.us-east-1.amazonaws.com/paysplit-backend:latest\",

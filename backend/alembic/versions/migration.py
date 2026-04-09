@@ -6,7 +6,7 @@ from alembic import command
 
 def run_migration():
     try:
-        DATABASE_URL = "postgresql://paysplit:PaySplit2026!@paysplit-db.cfwivs6oagt0.us-east-2.rds.amazonaws.com:5432/paysplit"
+        DATABASE_URL = "postgresql://paysplit:PaySplit2026!@paysplit-db.csncq82sep9u.us-east-1.rds.amazonaws.com:5432/paysplit"
         
         versions_dir = os.path.dirname(os.path.abspath(__file__))
         alembic_dir = os.path.dirname(versions_dir)
@@ -16,7 +16,7 @@ def run_migration():
         print("Running PaySplit Multi-Person Splits Migration...")
         print("-" * 60)
         print("Database: AWS RDS PostgreSQL")
-        print("Connection: paysplit-db.cfwivs6oagt0.us-east-2.rds.amazonaws.com")
+        print("Connection: paysplit-db.csncq82sep9u.us-east-1.rds.amazonaws.com")
         print("-" * 60)
         
         config = Config("alembic.ini")
@@ -33,7 +33,7 @@ def run_migration():
         print("  - split_invitations")
         print()
         print("Your multi-person splits feature is ready!")
-        print("Connected to: paysplit-db.cfwivs6oagt0.us-east-2.rds.amazonaws.com")
+        print("Connected to: paysplit-db.csncq82sep9u.us-east-1.rds.amazonaws.com")
         return 0
         
     except Exception as e:

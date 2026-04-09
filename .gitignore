@@ -73,4 +73,5 @@ logs/
 .coverage
 htmlcov/
 .pytest_cache/
-.ipynb_checkpoints/
+.ipynb_checkpoints/backend/sessionmanager-bundle/
+backend/sessionmanager-bundle.zip

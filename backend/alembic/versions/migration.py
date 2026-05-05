@@ -6,25 +6,28 @@ from alembic import command
 
 def run_migration():
     try:
-        DATABASE_URL = "postgresql://paysplit:PaySplit2026!@paysplit-db.csncq82sep9u.us-east-1.rds.amazonaws.com:5432/paysplit"
-        
+        DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+        if not DATABASE_URL:
+            print("ERROR: DATABASE_URL environment variable is not set.")
+            return 1
+
         versions_dir = os.path.dirname(os.path.abspath(__file__))
         alembic_dir = os.path.dirname(versions_dir)
         backend_dir = os.path.dirname(alembic_dir)
         os.chdir(backend_dir)
-        
+
         print("Running PaySplit Multi-Person Splits Migration...")
         print("-" * 60)
-        print("Database: AWS RDS PostgreSQL")
-        print("Connection: paysplit-db.csncq82sep9u.us-east-1.rds.amazonaws.com")
+        print("Database: Render PostgreSQL")
         print("-" * 60)
-        
+
         config = Config("alembic.ini")
         config.set_main_option("sqlalchemy.url", DATABASE_URL)
-        
+
         print("Creating database tables...")
         command.upgrade(config, "head")
-        
+
         print("-" * 60)
         print("Migration completed successfully!")
         print()
@@ -33,19 +36,17 @@ def run_migration():
         print("  - split_invitations")
         print()
         print("Your multi-person splits feature is ready!")
-        print("Connected to: paysplit-db.csncq82sep9u.us-east-1.rds.amazonaws.com")
         return 0
-        
+
     except Exception as e:
         print("-" * 60)
         print("Migration failed: " + str(e))
         print()
         print("Troubleshooting:")
-        print("  1. Make sure AWS RDS is running")
-        print("  2. Check security group allows port 5432")
-        print("  3. Verify connection string is correct")
-        print("  4. Check alembic.ini exists in backend/")
-        print("  5. Check migration file exists in backend/alembic/versions/")
+        print("  1. Make sure DATABASE_URL is set in Render environment variables")
+        print("  2. Check Render PostgreSQL service is running")
+        print("  3. Verify alembic.ini exists in backend/")
+        print("  4. Check migration file exists in backend/alembic/versions/")
         return 1
 
 if __name__ == "__main__":

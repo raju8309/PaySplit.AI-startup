@@ -12,7 +12,7 @@ from sqlalchemy.sql import func
 
 # revision identifiers, used by Alembic.
 revision = 'add_multi_person_splits'
-down_revision = None  # ← CHANGE THIS TO YOUR LAST MIGRATION ID
+down_revision = 'create_initial_tables'
 branch_labels = None
 depends_on = None
 

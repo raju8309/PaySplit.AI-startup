@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -11,6 +12,12 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = None
+
+# Read DATABASE_URL from environment and inject into alembic config
+database_url = os.environ.get("DATABASE_URL", "")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")

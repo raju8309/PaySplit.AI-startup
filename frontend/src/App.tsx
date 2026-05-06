@@ -16,6 +16,8 @@ import SplitApp from "./pages/SplitApp";
 import Analytics from "./pages/Analytics";
 import VirtualCard from "./pages/VirtualCard";
 import PlaidLink from "./pages/PlaidLink";
+import CreateSplit from "./pages/CreateSplit";
+import SplitApproval from "./pages/SplitApproval";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("access_token");
@@ -38,21 +40,29 @@ const App = () => (
       <Toaster />
       <Sonner />
       <Routes>
-        {/* Public */}
+        {/* Public Routes */}
         <Route path="/" element={<PublicRoute><Index /></PublicRoute>} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/about" element={<About />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        {/* Protected */}
-        <Route path="/dashboard"    element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/split"        element={<ProtectedRoute><SplitApp /></ProtectedRoute>} />
-        <Route path="/cards"        element={<ProtectedRoute><CardManager /></ProtectedRoute>} />
-        <Route path="/analytics"    element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        
+        {/* Split Routes - Public Access (for approval links) */}
+        <Route path="/splits/approve/:token" element={<SplitApproval />} />
+        
+        {/* Protected Routes */}
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/split" element={<ProtectedRoute><SplitApp /></ProtectedRoute>} />
+        <Route path="/splits/create" element={<ProtectedRoute><CreateSplit /></ProtectedRoute>} />
+        <Route path="/cards" element={<ProtectedRoute><CardManager /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/virtual-card" element={<ProtectedRoute><VirtualCard /></ProtectedRoute>} />
-        <Route path="/bank"         element={<ProtectedRoute><PlaidLink /></ProtectedRoute>} />
-        {/* Payment */}
+        <Route path="/bank" element={<ProtectedRoute><PlaidLink /></ProtectedRoute>} />
+        
+        {/* Payment Routes */}
         <Route path="/payment/success" element={<PaymentSuccess />} />
-        <Route path="/payment/cancel"  element={<PaymentCancel />} />
+        <Route path="/payment/cancel" element={<PaymentCancel />} />
+        
+        {/* 404 Not Found */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </TooltipProvider>

@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     # ── Frontend ──────────────────────────────────────────────────────────────
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # ── SendGrid (Email) ──────────────────────────────────────────────────────
+    SENDGRID_API_KEY: Optional[str] = None
+    SENDGRID_FROM_EMAIL: str = "rajukotturi45@gmail.com"
+    SENDGRID_FROM_NAME: str = "PaySplit"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -40,7 +40,7 @@ export default function CSVUpload({ onCardCreated }: CSVUploadProps) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:8000/api/cards/upload-csv', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/cards/upload-csv`, {
         method: 'POST',
         body: formData
       });
@@ -61,7 +61,7 @@ export default function CSVUpload({ onCardCreated }: CSVUploadProps) {
     if (!parsedData) return;
 
     try {
-      const response = await fetch('http://localhost:8000/api/cards/', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/cards/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsedData.card_suggestions)

@@ -1,3 +1,9 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 from pathlib import Path
 
@@ -133,14 +139,16 @@ def on_startup():
         logger.info("DB tables ensured.")
 
         # ── Incremental migrations (safe to run on every startup) ──────────────
-        with engine.connect() as conn:
-            conn.execute(
-                __import__("sqlalchemy").text(
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR UNIQUE"
-                )
-            )
-            conn.commit()
-        logger.info("Migrations applied.")
+        from sqlalchemy import text, inspect
+        inspector = inspect(engine)
+        existing_cols = [c["name"] for c in inspector.get_columns("users")]
+        if "google_id" not in existing_cols:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR"))
+                conn.commit()
+            logger.info("Added google_id column to users table.")
+        else:
+            logger.info("google_id column already present, skipping migration.")
     except Exception as e:
         logger.warning(f"DB not ready. Error: {e}")
 

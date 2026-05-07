@@ -13,6 +13,13 @@ from sqlalchemy.orm import Session
 from db import SessionLocal
 from models.split_transaction import SplitTransaction, SplitParticipant, SplitInvitation
 
+# ── Email service ──────────────────────────────────────────────────────────
+from services.email_service import (
+    send_approval_email,
+    send_split_created_email,
+    send_approval_status_email,
+)
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/splits", tags=["Multi-Person Splits"])
 
@@ -41,6 +48,8 @@ class CreateMultiPersonSplitRequest(BaseModel):
     merchant: str
     total_amount_cents: int
     participants: list
+    initiator_email: str | None = None
+    initiator_name: str | None = None
 
 
 class ApproveMultiPersonSplitRequest(BaseModel):
@@ -57,12 +66,13 @@ async def create_multi_person_split(
     db: Session = Depends(get_db)
 ):
     """
-    Person A initiates a multi-person split payment
-    
+    Person A initiates a multi-person split payment.
+
     Creates:
-    1. SplitTransaction (split_type="multi_person", status="pending")
-    2. SplitParticipant for each person (status="pending")
-    3. SplitInvitation for each non-initiator (sends approval email link)
+      1. SplitTransaction (split_type="multi_person", status="pending")
+      2. SplitParticipant for each person (status="pending")
+      3. SplitInvitation for each non-initiator
+      4. Sends approval email to each participant via SendGrid
     """
     try:
         # Validate: amounts sum correctly
@@ -89,13 +99,16 @@ async def create_multi_person_split(
             card_amount_cents=req.total_amount_cents,
             percentage=1.0,
             status="pending",
-            split_type="multi_person"  # ← KEY FIELD
+            split_type="multi_person"
         )
         db.add(split_txn)
         db.flush()
 
-        # Create SplitParticipant for each person
+        # We'll collect (email, link, amount, name) tuples so we send emails
+        # AFTER db.commit() — never before. If email fails, DB is still consistent.
+        pending_emails = []
         participants_data = []
+
         for p in req.participants:
             participant_id = str(uuid.uuid4())
             participant = SplitParticipant(
@@ -110,7 +123,7 @@ async def create_multi_person_split(
             db.add(participant)
             db.flush()
 
-            # Create invitation (send approval link)
+            # Create invitation
             approval_token = secrets.token_urlsafe(32)
             invitation = SplitInvitation(
                 id=str(uuid.uuid4()),
@@ -123,7 +136,8 @@ async def create_multi_person_split(
             db.add(invitation)
             db.flush()
 
-            approval_link = f"{os.getenv('FRONTEND_URL')}/splits/approve/{approval_token}"
+            approval_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/splits/approve/{approval_token}"
+
             participants_data.append({
                 "user_id": p["user_id"],
                 "email": p["email"],
@@ -133,17 +147,50 @@ async def create_multi_person_split(
                 "approval_link": approval_link
             })
 
-            # TODO: Send email with approval_link
-            logger.info(f"[Split] Created for {p['email']}: {approval_link}")
+            pending_emails.append({
+                "email": p["email"],
+                "name": p.get("name", "Friend"),
+                "amount": p["amount_cents"] / 100,
+                "link": approval_link,
+            })
 
         db.commit()
+
+        # ── Send emails AFTER commit (so DB state is consistent even if email fails) ──
+        initiator_name = req.initiator_name or "A friend"
+        email_results = {"sent": 0, "failed": 0}
+
+        for pe in pending_emails:
+            ok = send_approval_email(
+                participant_email=pe["email"],
+                approval_link=pe["link"],
+                merchant_name=req.merchant,
+                amount=pe["amount"],
+                initiator_name=initiator_name,
+            )
+            if ok:
+                email_results["sent"] += 1
+                logger.info(f"[Split] Approval email sent to {pe['email']}")
+            else:
+                email_results["failed"] += 1
+                logger.error(f"[Split] Approval email FAILED for {pe['email']}")
+
+        # Send confirmation to initiator (optional — only if email provided)
+        if req.initiator_email:
+            send_split_created_email(
+                initiator_email=req.initiator_email,
+                merchant_name=req.merchant,
+                total_amount=req.total_amount_cents / 100,
+                participant_count=len(req.participants),
+            )
 
         return {
             "split_id": split_id,
             "status": "pending",
             "total_amount_cents": req.total_amount_cents,
             "merchant": req.merchant,
-            "participants": participants_data
+            "participants": participants_data,
+            "emails": email_results,
         }
 
     except HTTPException:
@@ -162,10 +209,9 @@ async def approve_multi_person_split(
     db: Session = Depends(get_db)
 ):
     """
-    Person B approves the split via email link
-    
-    Updates SplitParticipant status to "approved"
-    If ALL participants approved → split ready for payment
+    Person B approves the split via email link.
+    Updates SplitParticipant status to "approved".
+    If ALL participants approved → split ready for payment.
     """
     try:
         # Find invitation by token
@@ -199,13 +245,32 @@ async def approve_multi_person_split(
 
         db.commit()
 
-        # Check if ALL participants approved
+        # Get parent split (for email notification)
         split_id = participant.split_transaction_id
+        split = db.query(SplitTransaction).filter(
+            SplitTransaction.id == split_id
+        ).first()
+
         all_participants = db.query(SplitParticipant).filter(
             SplitParticipant.split_transaction_id == split_id
         ).all()
 
         all_approved = all(p.status == "approved" for p in all_participants)
+
+        # ── Notify initiator that a participant approved ──
+        # Look up initiator email via the first invitation's related split — or
+        # wire in a proper user lookup later. For now we use invitee_name as
+        # a friendly label.
+        try:
+            if split and hasattr(split, "initiator_email") and split.initiator_email:
+                send_approval_status_email(
+                    initiator_email=split.initiator_email,
+                    merchant_name=split.merchant,
+                    participant_name=invitation.invitee_name or "A participant",
+                    status="approved",
+                )
+        except Exception as notify_err:
+            logger.warning(f"[Split] Could not notify initiator: {notify_err}")
 
         if all_approved:
             logger.info(f"[Split] All approved: {split_id}")

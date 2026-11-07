@@ -184,6 +184,19 @@ cp .env.example .env.local   # fill in your keys
 npm run dev
 ```
 
+### Mobile checkout shell (Expo)
+
+Sample app for a later App Store build. DoorDash is charged on one PaySplit card. The two caps are collected after that, and only when they sum to the cart. Nothing calls a bank, an issuer, or a card network.
+
+```bash
+cd mobile
+npm install
+npm test
+npx expo start
+```
+
+The rule lives in `mobile/src/ledger.ts`. `15 + 10 = 25` approves and writes two collection lines. `15 + 10` against `26` declines the whole cart.
+
 ### Forward Stripe webhooks locally
 
 ```bash
